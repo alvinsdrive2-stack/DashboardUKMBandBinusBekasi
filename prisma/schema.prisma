@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =======================
+// Models
+// =======================
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  nim             String           @unique
+  email           String           @unique
+  major           String
+  instruments     String[]
+  phoneNumber     String
+  organizationLvl OrganizationLvl // Penting untuk membedakan 'Pengurus' (misal: COMMISSIONER)
+  technicLvl      TechnicLvl
+
+  // Relasi ke partisipasi dalam event
+  eventPersonnel  EventPersonnel[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Event {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  date            DateTime
+  location        String
+  status          EventStatus      @default(DRAFT)
+
+  // Relasi ke personel yang tampil
+  personnel       EventPersonnel[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model EventPersonnel {
+  id       String           @id @default(cuid())
+  role     String           // misal: Vocal, Guitar 1, Drummer
+  status   ApprovalStatus   @default(PENDING)
+
+  userId   String?          // Dibuat nullable untuk slot kosong/lowongan
+  eventId  String
+
+  // Relasi
+  user     User?            @relation(fields: [userId], references: [id]) // Relasi opsional
+  event    Event            @relation(fields: [eventId], references: [id])
+
+  // PENAMBAHAN PENTING: Unique Constraint Komposit
+  // 1. Memastikan 1 user HANYA bisa mendaftar 1 role per event.
+  // 2. Memastikan 1 role (misal: "Vocal") HANYA bisa diisi 1 user per event (setelah disetujui/diisi).
+  //    Ini lebih efektif di enforce di logika aplikasi, tapi unique komposit ini memastikan user tidak bisa double-daftar.
+  @@unique([userId, eventId])
+  // Saran: jika Anda ingin memastikan role-role default (misal "Vocal") juga unik,
+  // Anda harus membuat role menjadi tabel terpisah atau menambahkan unique constraint:
+  // @@unique([role, eventId])
+  // TAPI, ini akan mengunci satu role ke satu orang selamanya, yang mana mungkin tidak cocok jika
+  // slot awal dibuat kosong dan diisi oleh pengurus.
+
+  // Jadi, biarkan `@unique([userId, eventId])` sebagai kunci utama untuk mencegah double-daftar.
+}
+
+// =======================
+// Enums
+// =======================
+
+enum OrganizationLvl {
+  COMMISSIONER // Saran untuk peran Pengurus/Admin
+  TALENT
+  SPECTA
+  PENGURUS     // Atau gunakan PENGURUS/ADMIN jika tidak ada 'COMMISSIONER'
+}
+
+enum TechnicLvl {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  FINISHED
+}
