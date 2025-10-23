@@ -487,7 +487,9 @@ export default memo(function OptimizedEventCalendar({
                 borderRadius="lg"
                 textAlign="center"
               >
-                <CalendarDaysIcon width={48} height={48} color={accentColor} mb="3" />
+                <Box mb="3" display="flex" justifyContent="center">
+                  <CalendarDaysIcon width={48} height={48} color={accentColor} />
+                </Box>
                 <Text fontSize="md" color={textPrimary} fontWeight="600" mb="1">
                   Tidak ada event pada tanggal ini
                 </Text>
@@ -510,7 +512,9 @@ export default memo(function OptimizedEventCalendar({
           borderRadius="lg"
           textAlign="center"
         >
-          <CalendarDaysIcon width={48} height={48} color={accentColor} mb="3" />
+          <Box mb="3" display="flex" justifyContent="center">
+            <CalendarDaysIcon width={48} height={48} color={accentColor} />
+          </Box>
           <Text fontSize="md" color={textPrimary} fontWeight="600" mb="1">
             Pilih Tanggal pada Kalender
           </Text>

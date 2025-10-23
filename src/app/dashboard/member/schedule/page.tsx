@@ -49,7 +49,7 @@ export default function SchedulePage() {
   const router = useRouter();
   const toast = useToast();
   const [events, setEvents] = useState<EventWithPersonnel[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<EventWithPersonnel | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedRegistration, setSelectedRegistration] = useState<any>(null);
   const [contentLoading, setContentLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
@@ -79,11 +79,11 @@ export default function SchedulePage() {
   }, [status]);
 
   const fetchEvents = async () => {
+    setContentLoading(true);
     try {
       const response = await fetch('/api/events/member');
       if (response.ok) {
         const data = await response.json();
-        // Handle new API response format: {events, pagination}
         setEvents(data.events || data);
       } else {
         throw new Error('Failed to fetch events');
@@ -173,28 +173,28 @@ export default function SchedulePage() {
 
   const navigateToSongManager = () => {
     if (selectedRegistration?.eventId) {
-      console.log('Navigating to songs with eventId:', selectedRegistration.eventId);
       router.push(`/dashboard/songs?eventId=${selectedRegistration.eventId}`);
-    } else {
-      console.log('No eventId found in selectedRegistration:', selectedRegistration);
     }
   };
 
   if (!isClient || !session) return null;
 
-  // 🌤️ Light neutral theme
-// Clean white theme
-  const bgMain = '#ffffff';
-  const textPrimary = '#1f2937';
-  const textSecondary = '#6b7280';
-  const alertBg = '#f3f4f6';
+  // 🎨 Light Mode Theme Variables
+  const bgMain = '#ffffff'; // Putih bersih
+  const textPrimary = '#1f2937'; // Abu-abu gelap (hampir hitam)
+  const textSecondary = '#6b7280'; // Abu-abu sedang
+  const alertBg = '#f3f4f6'; // Abu-abu sangat terang
   const cardBg = '#ffffff';
-  const borderColor = '#e5e7eb';
-
+  const borderColor = '#e5e7eb'; // Garis border halus
+  const upcomingCardBg = '#f8fafc'; // Latar belakang item event yang lebih terang
+  const pastCardBg = '#f0fdf4'; // Latar belakang event selesai
+  const accentColor = '#dc2626';
+  const accentBg = '#fef2f2';
   return (
     <Box minH="100vh" bg={bgMain}>
       <MemberSidebar activeRoute="schedule" />
       <Box flex="1" ml={{ base: 0, md: '280px' }} p="8">
+        {/* Loading Overlay */}
         {contentLoading && (
           <Box
             position="fixed"
@@ -212,10 +212,12 @@ export default function SchedulePage() {
             gap="4"
           >
             <Spinner size="xl" color="red.500" />
+            <Text color={textPrimary}>Memuat data event...</Text>
           </Box>
         )}
 
         <VStack spacing="8" align="stretch">
+          {/* Header dan Refresh Button */}
           <Flex justify="space-between" align="center">
             <Box>
               <Heading size="lg" color={textPrimary}>
@@ -225,30 +227,22 @@ export default function SchedulePage() {
                 Kelola jadwal dan partisipasi event Anda
               </Text>
             </Box>
-            <Button
-              colorScheme="red"
-              onClick={fetchEvents}
-              leftIcon={<CalendarDaysIcon width={20} height={20} />}
-              isLoading={contentLoading}
-              loadingText="Memuat..."
-            >
-              Refresh Data
-            </Button>
           </Flex>
 
-          <Alert status="info" borderRadius="md" bg={alertBg}>
-            <AlertIcon />
+          {/* Info Alert */}
+          <Alert status="info" borderRadius="md" bg={alertBg} borderColor={borderColor} borderWidth="1px">
+            <AlertIcon color={accentColor} />
             <Box>
               <Text fontWeight="bold" color={textPrimary}>
                 Informasi:
               </Text>
-              <Text fontSize="sm" color={textSecondary}>
-                Anda dapat melihat semua event yang Anda daftarkan di sini. Gunakan tombol
-                "Batalkan" jika ingin membatalkan partisipasi.
+              <Text fontSize="sm" color={textPrimary}>
+                Anda dapat melihat semua event yang Anda daftarkan di sini. Klik pada event untuk detail dan manajemen lagu.
               </Text>
             </Box>
           </Alert>
 
+          {/* Summary Cards */}
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6">
             {[
               {
@@ -270,7 +264,7 @@ export default function SchedulePage() {
               <Card
                 key={idx}
                 bg={cardBg}
-                boxShadow="sm"
+                boxShadow="base"
                 borderRadius="lg"
                 border="1px solid"
                 borderColor={borderColor}
@@ -293,10 +287,10 @@ export default function SchedulePage() {
               </Card>
             ))}
           </SimpleGrid>
-
-          {/* Upcoming Events */}
+          
+          {/* Upcoming Events List */}
           {!contentLoading && getUpcomingEvents().length > 0 && (
-            <Box bg={cardBg} p="6" borderRadius="lg" boxShadow="sm" border="1px" borderColor={borderColor}>
+            <Box bg={cardBg} p="6" borderRadius="lg" boxShadow="md" border="1px" borderColor={borderColor}>
               <Flex align="center" mb="6">
                 <Box bg="#fee2e2" p="2" borderRadius="md" mr="3">
                   <ClockIcon width={20} height={20} color="#dc2626" />
@@ -314,12 +308,12 @@ export default function SchedulePage() {
                 {getUpcomingEvents().map((registration) => (
                   <Box
                     key={registration.id}
-                    bg="#f8fafc"
+                    bg={upcomingCardBg}
                     p="4"
                     borderRadius="md"
                     border="1px"
                     borderColor={borderColor}
-                    _hover={{ bg: '#f1f5f9', shadow: 'md', transform: 'translateY(-1px)' }}
+                    _hover={{ bg: '#eef2ff', shadow: 'md', transform: 'translateY(-1px)' }}
                     transition="all 0.2s"
                     cursor="pointer"
                     onClick={() => openEventDetail(registration)}
@@ -331,22 +325,23 @@ export default function SchedulePage() {
                           <Text fontWeight="bold" color={textPrimary}>
                             {registration.eventTitle}
                           </Text>
-                          <Box
+                          <Badge
                             bg="#dbeafe"
                             px="2"
                             py="1"
                             borderRadius="full"
+                            color="#1e40af"
+                            textTransform="none"
                             onClick={(e) => e.stopPropagation()}
+                            cursor="pointer"
                           >
-                            <Text fontSize="xs" color="#1e40af">
-                              Lihat Detail
-                            </Text>
-                          </Box>
+                            <Text fontSize="xs">Lihat Detail</Text>
+                          </Badge>
                         </HStack>
                         <HStack spacing="4" color={textSecondary} fontSize="sm">
                           <HStack>
                             <UserIcon width={14} height={14} />
-                            <Text>{registration.role}</Text>
+                            <Text fontWeight="semibold">{registration.role}</Text>
                           </HStack>
                           <HStack>
                             <CalendarDaysIcon width={14} height={14} />
@@ -391,6 +386,76 @@ export default function SchedulePage() {
             </Box>
           )}
 
+          {/* Past Events List */}
+          {!contentLoading && getPastEvents().length > 0 && (
+            <Box bg={cardBg} p="6" borderRadius="lg" boxShadow="md" border="1px" borderColor={borderColor}>
+              <Flex align="center" mb="6">
+                <Box bg="#d1fae5" p="2" borderRadius="md" mr="3">
+                  <CheckCircleIcon width={20} height={20} color="#059669" />
+                </Box>
+                <Heading size="md" color={textPrimary}>
+                  Event Selesai
+                </Heading>
+                <Spacer />
+                <Badge colorScheme="green" px="3" py="1">
+                  {getPastEvents().length} Event
+                </Badge>
+              </Flex>
+
+              <VStack spacing="3" align="stretch">
+                {getPastEvents().map((registration) => (
+                  <Box
+                    key={registration.id}
+                    bg={pastCardBg}
+                    p="4"
+                    borderRadius="md"
+                    border="1px"
+                    borderColor={borderColor}
+                    _hover={{ bg: '#ecfdf5', shadow: 'md', transform: 'translateY(-1px)' }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                    onClick={() => openEventDetail(registration)}
+                  >
+                    <Flex justify="space-between" align="center">
+                      <Box flex="1">
+                        <HStack mb="2">
+                          <CheckCircleIcon width={16} height={16} color="#059669" />
+                          <Text fontWeight="bold" color={textPrimary}>
+                            {registration.eventTitle}
+                          </Text>
+                        </HStack>
+                        <HStack spacing="4" color={textSecondary} fontSize="sm">
+                          <HStack>
+                            <UserIcon width={14} height={14} />
+                            <Text fontWeight="semibold">{registration.role}</Text>
+                          </HStack>
+                          <HStack>
+                            <CalendarDaysIcon width={14} height={14} />
+                            <Text>
+                              {new Date(registration.eventDate).toLocaleDateString('id-ID', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </Text>
+                          </HStack>
+                          <HStack>
+                            <MapPinIcon width={14} height={14} />
+                            <Text>{registration.eventLocation}</Text>
+                          </HStack>
+                        </HStack>
+                      </Box>
+                      <Badge colorScheme="gray" px="3" py="1" borderRadius="full">
+                          Selesai
+                      </Badge>
+                    </Flex>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+          )}
+
           {/* Empty State */}
           {!contentLoading && getUserRegistrations().length === 0 && (
             <Box bg={cardBg} p="6" borderRadius="lg" boxShadow="sm" border="1px" borderColor={borderColor}>
@@ -402,7 +467,7 @@ export default function SchedulePage() {
                 <Text color={textSecondary} fontSize="sm" textAlign="center">
                   Anda belum mendaftar untuk event apa pun.
                   <br />
-                  Kunjungi halaman "Daftar Event" untuk melihat event yang tersedia.
+                  Kunjungi halaman **Daftar Event** untuk melihat event yang tersedia.
                 </Text>
                 <Button colorScheme="red" onClick={() => router.push('/dashboard/available-events')}>
                   Lihat Event Tersedia
@@ -412,18 +477,18 @@ export default function SchedulePage() {
           )}
         </VStack>
 
-        {/* Modal */}
+        {/* Modal Batalkan Pendaftaran */}
         <Modal isOpen={isOpen} onClose={onClose} size="md">
           <ModalOverlay />
           <ModalContent>
-            <ModalHeader>Batalkan Pendaftaran</ModalHeader>
+            <ModalHeader color={textPrimary}>Batalkan Pendaftaran</ModalHeader>
             <ModalCloseButton />
             <ModalBody>
               {selectedEvent && (
                 <VStack align="stretch" spacing="4">
                   <Box>
-                    <Heading size="sm">{selectedEvent.eventTitle}</Heading>
-                    <Text color="gray.600" fontSize="sm">
+                    <Heading size="sm" color={textPrimary}>{selectedEvent.eventTitle}</Heading>
+                    <Text color={textSecondary} fontSize="sm">
                       {selectedEvent.role} •{' '}
                       {new Date(selectedEvent.eventDate).toLocaleString('id-ID', {
                         weekday: 'long',
@@ -435,18 +500,11 @@ export default function SchedulePage() {
                       })}
                     </Text>
                   </Box>
-                  {selectedEvent.eventDescription && (
+                  <Alert status="warning" borderRadius="md" bg="#fffbeb" borderColor="#fef3c7" borderWidth="1px">
+                    <AlertIcon color='#dc2626' />
                     <Box>
-                      <Text fontWeight="bold" mb="1">
-                        Deskripsi:
-                      </Text>
-                      <Text fontSize="sm">{selectedEvent.eventDescription}</Text>
-                    </Box>
-                  )}
-                  <Alert status="warning" borderRadius="md">
-                    <AlertIcon />
-                    <Box>
-                      <Text fontSize="sm">
+                      <Text fontWeight="bold" color="#d97706">Peringatan</Text>
+                      <Text fontSize="sm" color={textSecondary}>
                         Apakah Anda yakin ingin membatalkan pendaftaran untuk event ini? Slot
                         ini akan tersedia untuk anggota lain.
                       </Text>
@@ -457,7 +515,7 @@ export default function SchedulePage() {
             </ModalBody>
             <ModalFooter>
               <Button variant="ghost" mr={3} onClick={onClose}>
-                Batal
+                Tutup
               </Button>
               {selectedEvent && (
                 <Button colorScheme="red" onClick={() => handleCancelRegistration(selectedEvent.id)}>
@@ -468,7 +526,7 @@ export default function SchedulePage() {
           </ModalContent>
         </Modal>
 
-        {/* Event Detail Modal */}
+        {/* Modal Detail Event (Sudah cukup light/terang) */}
         <Modal
           isOpen={isDetailModalOpen}
           onClose={closeEventDetail}
@@ -478,21 +536,21 @@ export default function SchedulePage() {
         >
           <ModalOverlay
             backdropFilter="blur(8px)"
-            bg="rgba(0, 0, 0, 0.6)"
+            bg="rgba(0, 0, 0, 0.4)" // Overlay sedikit gelap untuk fokus
           />
           <ModalContent
-            borderRadius="2xl"
+            borderRadius="xl"
             boxShadow="2xl"
             overflow="hidden"
             bg="white"
           >
             {/* Modal Header dengan gradient */}
             <Box
-  // Gradient dari Merah Terang ke Merah Gelap (Maroon)
-  bg="linear-gradient(135deg, #FF416C 0%, #D40C0C 100%)"
-  p="6"
-  position="relative"
->
+              // Gradient Merah
+              bg="linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)"
+              p="6"
+              position="relative"
+            >
               <ModalCloseButton
                 color="white"
                 _hover={{ bg: 'rgba(255,255,255,0.2)' }}
@@ -520,10 +578,10 @@ export default function SchedulePage() {
                 <VStack align="stretch" spacing="0">
                   {/* Event Info Card */}
                   <Box
-                    bg="gray.50"
+                    bg="#f9fafb"
                     p="6"
                     borderBottom="1px"
-                    borderColor="gray.200"
+                    borderColor={borderColor}
                   >
                     <VStack align="stretch" spacing="4">
                       <HStack align="start">
@@ -624,12 +682,14 @@ export default function SchedulePage() {
                   <Box p="6">
                     <VStack align="stretch" spacing="4">
                       <HStack justify="space-between" align="center">
-                        <Heading size="sm" color={textPrimary}>
-                          <MusicalNoteIcon width={16} height={16} mr="2" />
-                          Manajemen Lagu
+                        <Heading size="md" color={textPrimary}>
+                          <HStack spacing="2" align="center">
+                            <MusicalNoteIcon width={20} height={20} color="#1f2937" />
+                            <Text>Manajemen Lagu</Text>
+                          </HStack>
                         </Heading>
                         <Badge bg="#fef2f2" color="#dc2626" px="3" py="1" borderRadius="full">
-                          Kelola setlist untuk event ini
+                          Kelola setlist
                         </Badge>
                       </HStack>
 
@@ -640,15 +700,15 @@ export default function SchedulePage() {
                         borderColor="#bfdbfe"
                         borderWidth="1px"
                       >
-                        <AlertIcon color="#3b82f6" />
-                        <VStack align="start" spacing="2">
+                        <AlertIcon color='#dc2626' />
+                        <VStack align="start" spacing="1">
                           <Text fontWeight="600" color={textPrimary} fontSize="sm">
-                            Manajemen Lagu Event
+                            Kelola Lagu Event
                           </Text>
                           <Text fontSize="xs" color={textSecondary} lineHeight="1.5">
-                            • Tambahkan lagu-lagu yang akan dibawakan dalam event<br />
-                            • Atur urutan pemilihan dan setlist<br />
-                            • Berikan informasi kunci dan aransemen untuk setiap lagu
+                            • Tambahkan lagu-lagu yang akan dibawakan<br />
+                            • Atur urutan setlist<br />
+                            • Berikan informasi kunci dan aransemen
                           </Text>
                         </VStack>
                       </Alert>
@@ -657,17 +717,16 @@ export default function SchedulePage() {
                       <HStack spacing="4" justify="center" pt="2">
                         <Button
                           colorScheme="red"
-                          size="lg"
+                          size="md"
                           onClick={navigateToSongManager}
                           leftIcon={<MusicalNoteIcon width={20} height={20} />}
-                          _hover={{ bg: '#2563eb' }}
                           px="8"
                         >
                           Kelola Lagu
                         </Button>
                         <Button
                           variant="outline"
-                          size="lg"
+                          size="md"
                           onClick={closeEventDetail}
                           px="8"
                         >

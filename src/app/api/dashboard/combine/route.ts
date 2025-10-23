@@ -172,7 +172,7 @@ async function getStatsData(userId?: string) {
         (SELECT json_agg(r.*) FROM ranking r) as ranking
     `;
 
-    const result = await prisma.$queryRawUnsafe(query, userId);
+    const result = await prisma.$queryRawUnsafe(query, userId) as any[];
 
     if (result && result.length > 0) {
       const stats = result[0];

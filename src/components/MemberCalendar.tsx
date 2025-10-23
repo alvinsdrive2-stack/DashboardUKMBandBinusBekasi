@@ -62,7 +62,7 @@ export default function MemberCalendar({
       return {
         id: event.id,
         title: event.title,
-        date: event.date,
+        date: eventDate.toISOString().split('T')[0], // Convert Date to string format YYYY-MM-DD
         location: event.location,
         status: event.status,
         personnelCount: event.personnel?.length || 0,

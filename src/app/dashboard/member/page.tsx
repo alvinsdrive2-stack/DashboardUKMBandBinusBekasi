@@ -52,9 +52,9 @@ export default function MemberDashboard() {
   });
 
   // Extract data dari dashboardData
-  const events = dashboardData?.events?.dashboard || [];
-  const publishedEvents = dashboardData?.events?.member || [];
-  const participationStats = dashboardData?.stats;
+  const events = (dashboardData as any)?.events?.dashboard || [];
+  const publishedEvents = (dashboardData as any)?.events?.member || [];
+  const participationStats = (dashboardData as any)?.stats;
 
   useEffect(() => {
     setIsClient(true);
@@ -98,7 +98,7 @@ export default function MemberDashboard() {
     }
 
     // Cari user rank dari data ranking
-    const userRankData = participationStats.ranking?.find(r => r.name === session?.user?.name);
+    const userRankData = (participationStats as any).ranking?.find((r: any) => r.name === session?.user?.name);
 
     return {
       participations: participationStats.userStats?.approved_count || 0,

@@ -17,7 +17,7 @@ export function QueryClientProviderWrapper({ children }: QueryClientProviderProp
           queries: {
             // Cache time: 10 menit
             staleTime: 5 * 60 * 1000, // 5 menit
-            cacheTime: 10 * 60 * 1000, // 10 menit
+            gcTime: 10 * 60 * 1000, // 10 menit (garbage collection)
             retry: (failureCount, error) => {
               // Retry 2 kali untuk network errors
               if (failureCount < 2 && error instanceof Error) {
@@ -31,10 +31,6 @@ export function QueryClientProviderWrapper({ children }: QueryClientProviderProp
             refetchOnMount: true, // Refetch saat component mount
             // Background refetching untuk data aktual
             refetchInterval: false, // Tidak auto refetch untuk efficiency
-            // Error boundary handling
-            useErrorBoundary: false, // Handle error di component level
-            // Suspense mode untuk better loading states
-            suspense: false,
           },
           mutations: {
             retry: 1,
@@ -50,8 +46,7 @@ export function QueryClientProviderWrapper({ children }: QueryClientProviderProp
       {children}
       <ReactQueryDevtools
         initialIsOpen={false}
-        position="bottom-right"
-        buttonPosition="bottom-right"
+        position="bottom"
       />
     </QueryClientProvider>
   );

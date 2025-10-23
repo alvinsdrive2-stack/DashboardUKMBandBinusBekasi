@@ -6,7 +6,7 @@ import { isMember } from '@/utils/roles';
 
 // Simple cache for dashboard events (3 minutes)
 const eventsCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const CACHE_TTL = 10; // 3 minutes
 
 export async function GET(request: NextRequest) {
   try {

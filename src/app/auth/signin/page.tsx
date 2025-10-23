@@ -87,14 +87,25 @@ export default function SignIn() {
       alignItems="center"
       justifyContent="center"
     >
-      <Container maxW="md" py={{ base: '12', md: '24' }}>
+      <Container maxW="md" py={{ base: '3', md: '4' }}>
         <Stack spacing="8" textAlign="center">
           <Heading size="lg" color="gray.800">
-            🎸 UKM Band Bekasi
+           <Box
+            p={{ base: 1.5, md: 2 }}
+            borderRadius="xl"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <img
+              src="https://i.imgur.com/YZICojL.png"
+              alt="UKM Band Logo"
+              width={200}
+              height={200}
+              style={{ objectFit: 'contain' }}
+            />
+          </Box>
           </Heading>
-          <Text color="gray.600">
-            Masuk ke dashboard untuk mengelola acara dan jadwal
-          </Text>
 
           <Card
             bg="white"
@@ -122,6 +133,7 @@ export default function SignIn() {
                       required
                       borderColor="gray.300"
                       _focus={{ borderColor: 'black', boxShadow: '0 0 0 1px black' }}
+                      color="black"
                     />
                   </FormControl>
 
@@ -138,6 +150,7 @@ export default function SignIn() {
                       required
                       borderColor="gray.300"
                       _focus={{ borderColor: 'black', boxShadow: '0 0 0 1px black' }}
+                      color="black"
                     />
                   </FormControl>
 

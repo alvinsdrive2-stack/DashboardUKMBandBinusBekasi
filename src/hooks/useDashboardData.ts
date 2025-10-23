@@ -17,7 +17,7 @@ interface CacheEntry {
 
 // Simple in-memory cache with 5-minute TTL
 const cache = new Map<string, CacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 10; // 5 minutes
 
 function useCache<T>(key: string, fetcher: () => Promise<T>, ttl: number = CACHE_TTL): {
   data: T | null;
@@ -47,8 +47,8 @@ function useCache<T>(key: string, fetcher: () => Promise<T>, ttl: number = CACHE
 
       // Handle different response formats (events API now returns {events, pagination})
       let processedResult = result;
-      if (result && result.events && Array.isArray(result.events)) {
-        processedResult = result.events;
+      if (result && (result as any).events && Array.isArray((result as any).events)) {
+        processedResult = (result as any).events;
       }
 
       // Cache the result
@@ -143,17 +143,17 @@ export function useDashboardData() {
         ]);
       };
 
-      const fetchEvents = fetchWithTimeout('/api/events/dashboard').then(res => {
+      const fetchEvents = fetchWithTimeout('/api/events/dashboard').then((res: any) => {
         if (!res.ok) throw new Error(`Dashboard events fetch failed: ${res.status}`);
         return res.json();
       });
 
-      const fetchPublishedEvents = fetchWithTimeout('/api/events/public').then(res => {
+      const fetchPublishedEvents = fetchWithTimeout('/api/events/public').then((res: any) => {
         if (!res.ok) throw new Error(`Published events fetch failed: ${res.status}`);
         return res.json();
       });
 
-      const fetchStats = fetchWithTimeout('/api/stats/participation').then(res => {
+      const fetchStats = fetchWithTimeout('/api/stats/participation').then((res: any) => {
         if (!res.ok) throw new Error(`Stats fetch failed: ${res.status}`);
         return res.json();
       });
@@ -181,7 +181,7 @@ export function useDashboardData() {
       }
 
       // Handle both array and object formats for events API response
-      const eventsArray = Array.isArray(eventsData) ? eventsData : eventsData?.events || [];
+      const eventsArray = Array.isArray(eventsData) ? eventsData : (eventsData as any)?.events || [];
       const publishedEventsArray = publishedEventsData?.events || [];
 
       // Remove duplicates from all events
@@ -293,7 +293,7 @@ export function useCalendarData() {
     ]);
 
     return Array.from(
-      new Map([...(eventsData || []), ...(publishedEventsData?.events || [])].map(event => [event.id, event])).values()
+      new Map([...(eventsData || []), ...((publishedEventsData as any)?.events || [])].map(event => [event.id, event])).values()
     );
   });
 }

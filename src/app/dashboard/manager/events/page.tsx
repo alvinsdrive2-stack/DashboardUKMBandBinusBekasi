@@ -36,7 +36,6 @@ import {
   Alert,
   AlertIcon,
   Avatar,
-  useColorModeValue,
   SimpleGrid,
   Divider,
 } from '@chakra-ui/react';
@@ -84,18 +83,19 @@ export default function ManagerEventsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Theme colors
-  const bgMain = useColorModeValue('#ffffff', '#1a202c');
-  const textPrimary = useColorModeValue('#1f2937', '#f7fafc');
-  const textSecondary = useColorModeValue('#6b7280', '#a0aec0');
-  const borderColor = useColorModeValue('#e5e7eb', '#2d3748');
-  const accentColor = '#dc2626';
+  const bgMain = '#ffffff'; // Putih
+  const bgAccentLight = '#fef2f2'; // Merah muda sangat terang (Pengganti warna.50)
+  const textPrimary = '#1f2937'; // Abu-abu gelap
+  const textSecondary = '#6b7280'; // Abu-abu sedang
+  const borderColor = '#e5e7eb'; // Abu-abu sangat terang
+  const accentColor = '#dc2626'; // Merah
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     } else if (status === 'authenticated' &&
-               session?.user?.organizationLvl !== 'COMMISSIONER' &&
-               session?.user?.organizationLvl !== 'PENGURUS') {
+      (session?.user?.organizationLvl !== 'COMMISSIONER' &&
+        session?.user?.organizationLvl !== 'PENGURUS')) {
       router.push('/dashboard/member');
     }
   }, [status, session, router]);
@@ -248,299 +248,324 @@ export default function ManagerEventsPage() {
   const goToEventPersonnel = (eventId: string) => {
     router.push(`/dashboard/manager/events/${eventId}/personnel`);
   };
-  const downloadEventReport = async (event: EventWithPersonnel) => {
-  setDownloadingPdf(event.id);
 
-  try {
-    // Ambil daftar lagu dari event
-    const songsResponse = await fetch(`/api/songs/event/${event.id}`);
-    const songs = songsResponse.ok ? await songsResponse.json() : [];
+const downloadEventReport = async (event: EventWithPersonnel) => {
+  setDownloadingPdf(event.id);
 
-    // Buat dokumen PDF baru
-    const pdf = new jsPDF();
-    
-    // --- UTILITY UNTUK MEMUAT GAMBAR ---
-    // Fungsi ini akan memuat gambar dan mengembalikannya sebagai objek Image
-    const loadImage = (url: string): Promise<HTMLImageElement> => {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = (error) => reject(error);
-        img.src = url;
-      });
-    };
-    
-    // Muat gambar Tanda Tangan dan Logo Kop Surat secara paralel/await
-    const [logoImg, ttdImg] = await Promise.all([
-        loadImage('https://i.imgur.com/YZICojL.png'),
-        loadImage('https://i.imgur.com/HCEqzqg.jpeg'),
-    ]);
-    // ------------------------------------
+  try {
+    // Bagian ini dipertahankan sesuai kerangka asli Anda
+    const songsResponse = await fetch(`/api/songs/event/${event.id}`);
+    const songs = songsResponse.ok ? await songsResponse.json() : [];
 
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'legal',
+    });
 
-    // === KOP SURAT ===
-    pdf.addImage(logoImg, 'PNG', 20, 10, 25, 25);
+    const loadImage = (url: string): Promise<HTMLImageElement> =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(18);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text('UKM BAND BINUS BEKASI', 105, 20, { align: 'center' });
+    // Asumsikan URL gambar ini valid
+    const [logoImg, ttdImg] = await Promise.all([
+      loadImage('https://i.imgur.com/YZICojL.png'),
+      loadImage('https://i.imgur.com/HCEqzqg.jpeg'),
+    ]);
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(11);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text('Universitas Bina Nusantara - Kampus Bekasi', 105, 27, { align: 'center' });
-    pdf.text('Jl. Lingkar Boulevar Blok WA No.1 Summarecon', 105, 33, { align: 'center' });
-    pdf.text('Telp: 0813-2209-5203 | Email: ukmband.binusbekasi@gmail.com', 105, 39, { align: 'center' });
+    // === PENGATURAN MARGIN ===
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(0.7);
-    pdf.line(20, 43, 190, 43);
+    const marginLeft = 20;
+    const marginRight = 20;
+    // Disesuaikan agar kop lebih ke atas
+    const marginTop = 20; 
+    const marginBottom = 25; // Margin bawah untuk footer
+    const SAFE_ZONE = pageHeight - marginBottom; // Batas aman konten
 
-    let y = 48;
-    pdf.setFont('times', 'normal');
-    pdf.setFontSize(12);
+    const contentEnd = pageWidth - marginRight;
+    const maxWidth = pageWidth - marginLeft - marginRight;
+    const center = pageWidth / 2;
 
-    // Tanggal surat
-    pdf.text(
-      `Bekasi, ${new Date().toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })}`,
-      140,
-      y,
-      { align: 'left' }
-    );
+    let y = marginTop;
+
+    // === FUNGSI OVERFLOW CHECK KUSTOM ===
+    const checkOverflowAndAddPage = (requiredSpace: number) => {
+      if (y + requiredSpace > SAFE_ZONE) {
+        pdf.addPage();
+        y = marginTop; 
+        return true;
+      }
+      return false;
+    };
+
+    // === FUNGSI JUSTIFY KUSTOM ===
+    const addJustifiedText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number = 6) => {
+      const lines = pdf.splitTextToSize(text, maxWidth);
+      lines.forEach((line: string, index: number) => {
+        checkOverflowAndAddPage(lineHeight); 
+
+        const isLastLine = index === lines.length - 1;
+        
+        if (!isLastLine && line.trim().split(' ').length > 1) {
+          const words = line.trim().split(' ');
+          const lineWidth = pdf.getTextWidth(line);
+          const spaceWidth = (maxWidth - lineWidth) / (words.length - 1);
+          
+          let currentX = x;
+          words.forEach((word, i) => {
+            pdf.text(word, currentX, y);
+            currentX += pdf.getTextWidth(word + ' ') + spaceWidth;
+          });
+        } else {
+          pdf.text(line, x, y);
+        }
+        y += lineHeight;
+      });
+      return y; 
+    };
+
+    // === KOP SURAT (Disesuaikan agar lebih ke atas) ===
+    pdf.addImage(logoImg, 'PNG', marginLeft, y, 25, 25); 
+
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(16);
+    pdf.text('UKM BAND BINUS BEKASI', center, y + 5, { align: 'center' }); 
+
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(11);
+    pdf.text('Universitas Bina Nusantara - Kampus Bekasi', center, y + 12, { align: 'center' });
+    pdf.text('Jl. Lingkar Boulevar Blok WA No.1 Summarecon Bekasi', center, y + 18, { align: 'center' });
+    pdf.text('Telp: 0813-2209-5203 | Email: ukmband.binusbekasi@gmail.com', center, y + 24, { align: 'center' });
+
+    pdf.setLineWidth(0.7);
+    pdf.line(marginLeft, y + 28, contentEnd, y + 28);
+
+    y += 35; // Jarak setelah kop dikurangi
+
+    // === INFORMASI SURAT ===
+    pdf.text(
+      `Bekasi, ${new Date().toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })}`,
+      contentEnd,
+      y,
+      { align: 'right' }
+    );
+    y += 10;
+
+    const col1 = marginLeft;
+    const col2 = col1 + 25;
+    const col3 = col2 + 3;
+
+    pdf.text('Nomor', col1, y);
+    pdf.text(':', col2, y);
+    pdf.text('-', col3, y);
+    y += 6;
+
+    pdf.text('Perihal', col1, y);
+    pdf.text(':', col2, y);
+    pdf.setFont('times', 'bold');
+    pdf.text('Surat Pernyataan Kesanggupan Performance', col3, y);
+    pdf.setFont('times', 'normal');
+    y += 10;
+
+    pdf.text('Kepada Yth.', col1, y);
+    y += 6;
+
+    const recipientText = `Ketua Panitia Penyelenggara Event ${event.title}`;
+    const recipientLines = pdf.splitTextToSize(recipientText, maxWidth - 5);
+    pdf.text(recipientLines, col1 + 5, y);
+    y += recipientLines.length * 6;
+
+    pdf.text('di Tempat', col1 + 5, y);
+    y += 10;
+
+    pdf.text('Dengan hormat,', col1, y);
+    y += 8;
+
+    // === PARAGRAF PEMBUKA (Kesanggupan) ===
+    const openingText = `Menanggapi surat undangan/permohonan dari Panitia Penyelenggara ` +
+      `Event "${event.title}", dengan ini kami dari UKM Band BINUS Bekasi menyatakan ` +
+      `**SANGGUP** untuk berpartisipasi dan menampilkan performa musik ` +
+      `sesuai dengan rincian kegiatan dan personel terlampir.`;
+    
+    y = addJustifiedText(openingText, marginLeft, y, maxWidth);
+    y += 8; 
+
+    pdf.text('Berikut merupakan rincian kegiatan dan kesanggupan kami:', marginLeft, y);
+    y += 10;
+
+    // === 1. DETAIL ACARA PERFORMANCE ===
+    checkOverflowAndAddPage(70);
+    
+    pdf.setFont('times', 'bold');
+    pdf.text('1. Detail Acara Performance', marginLeft, y); 
+    pdf.setFont('times', 'normal');
+    y += 8;
+
+    const detCol1 = marginLeft + 5;
+    const detCol2 = detCol1 + 25;
+    const detCol3 = detCol2 + 3;
+    const detWidth = maxWidth - (detCol3 - marginLeft);
+
+    const addDetail = (label: string, value: string) => {
+      const lines = pdf.splitTextToSize(value || '-', detWidth);
+      const requiredHeight = lines.length * 6;
+        
+      checkOverflowAndAddPage(requiredHeight);
+
+      pdf.text(label, detCol1, y);
+      pdf.text(':', detCol2, y);
+      pdf.text(lines, detCol3, y);
+      y += requiredHeight;
+    };
+
+    addDetail('Nama Event', event.title);
+    addDetail(
+      'Waktu Perform',
+      new Date(event.date).toLocaleString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    );
+    addDetail('Lokasi', event.location);
+    if (event.description) addDetail('Keterangan', event.description);
+
+    // === 2. DAFTAR PERSONEL ===
+    y += 8;
+    checkOverflowAndAddPage(40);
+    
+    pdf.setFont('times', 'bold');
+    pdf.text('2. Daftar Personel', marginLeft, y);
+    pdf.setFont('times', 'normal');
+    y += 8;
+
+    if (!event.personnel.length) {
+      pdf.text('- Belum ada personel terdaftar.', detCol1, y);
+      y += 6;
+    } else {
+      event.personnel.forEach((p: any, i: number) => {
+        const line = `${i + 1}. ${p.role} : ${p.user?.name || 'Belum ada'}`;
+        const lines = pdf.splitTextToSize(line, maxWidth);
+        const requiredHeight = lines.length * 6;
+        
+        checkOverflowAndAddPage(requiredHeight);
+
+        pdf.text(lines, detCol1, y);
+        y += requiredHeight;
+      });
+    }
+
+    // === 3. DAFTAR LAGU YANG DIBAWAKAN ===
+    y += 10;
+    checkOverflowAndAddPage(40); 
+    
+    pdf.setFont('times', 'bold');
+    pdf.text('3. Daftar Lagu yang Dibawakan', marginLeft, y);
+    pdf.setFont('times', 'normal');
+    y += 8;
+
+    if (!songs.length) {
+      pdf.text('- Belum ada lagu yang tercatat.', detCol1, y);
+      y += 6;
+    } else {
+      songs.forEach((song: any, i: number) => {
+        const line = `${i + 1}. ${song.title}${song.artist ? ' - ' + song.artist : ''}`;
+        const lines = pdf.splitTextToSize(line, maxWidth);
+        const requiredHeight = lines.length * 6;
+        
+        checkOverflowAndAddPage(requiredHeight);
+
+        pdf.text(lines, detCol1, y);
+        y += requiredHeight;
+      });
+    }
+
+    // === 4. PERNYATAAN TANGGUNG JAWAB ===
     y += 10;
+    checkOverflowAndAddPage(50);
+    
+    pdf.setFont('times', 'bold');
+    pdf.text('4. Pernyataan Tanggung Jawab', marginLeft, y); 
+    pdf.setFont('times', 'normal');
+    y += 8;
 
-    // Perataan titik dua untuk Nomor dan Perihal
-    const col1 = 20; // Kolom awal teks
-    const col2 = 45; // Posisi titik dua
-    const col3 = 48; // Posisi nilai setelah titik dua
+    const responsibilityText = `Kami bertanggung jawab penuh atas kualitas performa yang disajikan. ` +
+      `Oleh karena itu, UKM Band BINUS Bekasi bersedia dan bertanggung jawab ` +
+      `untuk menanggung segala konsekuensi, memberikan klarifikasi atau perbaikan, ` +
+      `jika terjadi kesalahan teknis, ketidaksesuaian dengan rundown yang disepakati, ` +
+      `atau kurangnya performa dalam penampilan kami.`;
     
-    // Nomor Surat (Tambahkan)
-    pdf.text('Nomor', col1, y);
-    pdf.text(':', col2, y);
-    pdf.text('-', col3, y);
-    y += 7;
-    
-    // Perihal Surat (Tambahkan)
-    pdf.text('Perihal', col1, y);
-    pdf.text(':', col2, y);
-    pdf.text('Laporan Kegiatan Event', col3, y);
-    y += 12;
+    y = addJustifiedText(responsibilityText, marginLeft, y, maxWidth);
 
 
-    // Alamat Tujuan
-    pdf.text('Kepada Yth.', col1, y);
-    y += 6;
-    pdf.text(`Panitia Penyelenggara Event ${event.title}`, col1 + 5, y); // Indent 5
-    y += 6;
-    pdf.text('di Tempat', col1 + 5, y); // Indent 5
-    y += 10;
+    // === PENUTUP ===
+    y += 12;
+    checkOverflowAndAddPage(100); 
+    
+    const closingText = `Demikian surat pernyataan kesanggupan ini kami buat untuk digunakan ` +
+      `sebagaimana mestinya. Kami berharap dapat memberikan performa terbaik ` +
+      `dan turut menyukseskan Event "${event.title}". Atas perhatian dan kerjasamanya, kami ` +
+      `ucapkan terima kasih.`;
 
-    // Paragraf pembuka
-    pdf.text('Dengan hormat,', col1, y);
-    y += 10;
+    y = addJustifiedText(closingText, marginLeft, y, maxWidth);
+    y += 12; 
 
-    const bodyLines = pdf.splitTextToSize(
-      `Sehubungan dengan pelaksanaan acara "${event.title}" yang telah diselenggarakan oleh UKM Band BINUS Bekasi, bersama surat ini kami sampaikan laporan kegiatan sebagai bentuk dokumentasi dan pertanggungjawaban pelaksanaan event tersebut.`,
-      165
-    );
-    pdf.text(bodyLines, col1 + 5, y); // Indent 5
-    y += bodyLines.length * 6 + 8; // Mengubah 4 menjadi 6 untuk spasi baris yang lebih baik
+    // === TANDA TANGAN ===
+    const ttdX = contentEnd - 60;
+    pdf.text('Hormat kami,', ttdX, y);
+    y += 5;
+    pdf.addImage(ttdImg, 'JPEG', ttdX, y, 40, 20);
+    y += 25;
+    pdf.text('Jones Morgan', ttdX, y);
+    pdf.line(ttdX - 2, y + 1, ttdX + 40, y + 1);
+    y += 6;
+    pdf.setFont('times', 'bold');
+    pdf.text('Ketua UKM Band BINUS Bekasi', ttdX, y);
 
-    pdf.text('Berikut merupakan rincian kegiatan:', col1 + 5, y); // Indent 5
-    y += 10;
+    // === FOOTER (Diulang di semua halaman) ===
+    // PERBAIKAN TYPE ERROR DENGAN TYPE ASSERTION (as any)
+    const totalPages = (pdf.internal as any).getNumberOfPages();
+    
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(9);
+      pdf.setTextColor(150, 150, 150);
+      const footerText = 'Dokumen ini dihasilkan secara otomatis oleh UKM Band Bekasi Dashboard';
+      const footerLines = pdf.splitTextToSize(footerText, maxWidth);
+      pdf.text(footerLines, center, pageHeight - marginBottom + 10, { align: 'center' }); 
+    }
 
-    // === 1. DETAIL ACARA ===
-    pdf.setFont('times', 'bold');
-    pdf.text('1. Detail Acara', col1, y);
-    pdf.setFont('times', 'normal');
-    y += 8;
+    // === SIMPAN PDF ===
+    const eventTitleSlug = event.title.replace(/[^a-z0-9]/gi, '_').toUpperCase();
+    const todayDate = new Date().toISOString().split('T')[0];
+    const fileName = `Surat_Kesanggupan_${eventTitleSlug}_${todayDate}.pdf`;
+    pdf.save(fileName);
 
-    // Perataan titik dua untuk Detail Acara
-    const detCol1 = col1 + 5; // Awal teks detail
-    const detCol2 = detCol1 + 25; // Posisi titik dua
-    const detCol3 = detCol2 + 3; // Posisi nilai setelah titik dua
-
-    // Judul
-    pdf.text(`Judul`, detCol1, y);
-    pdf.text(`:`, detCol2, y);
-    pdf.text(`${event.title}`, detCol3, y);
-    y += 7;
-
-    // Tanggal
-    pdf.text(`Tanggal`, detCol1, y);
-    pdf.text(`:`, detCol2, y);
-    pdf.text(
-      `${new Date(event.date).toLocaleString('id-ID', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`,
-      detCol3,
-      y
-    );
-    y += 7;
-
-    // Lokasi
-    pdf.text(`Lokasi`, detCol1, y);
-    pdf.text(`:`, detCol2, y);
-    pdf.text(`${event.location}`, detCol3, y);
-    y += 7;
-
-    // Status
-    pdf.text(`Status`, detCol1, y);
-    pdf.text(`:`, detCol2, y);
-    pdf.text(`${getStatusText(event.status)}`, detCol3, y);
-    y += 7;
-
-    // Deskripsi
-    if (event.description) {
-      pdf.text(`Deskripsi`, detCol1, y);
-      pdf.text(`:`, detCol2, y);
-      const descLines = pdf.splitTextToSize(`${event.description}`, 160);
-      pdf.text(descLines, detCol3, y);
-      y += descLines.length * 6 + 87;
-    }
-
-    // === 2. DAFTAR PERSONEL ===
-    y += 8;
-    pdf.setFont('times', 'bold');
-    pdf.text('2. Daftar Personel', col1, y);
-    pdf.setFont('times', 'normal');
-    y += 8;
-
-    const persCol1 = col1 + 5; 
-    const persCol2 = persCol1 + 10;
-    const persCol3 = persCol2 + 30;
-    const persCol4 = persCol3 + 3; 
-
-    if (event.personnel.length === 0) {
-      pdf.text('- Belum ada personel terdaftar.', persCol1, y);
-      y += 6;
-    } else {
-      event.personnel.forEach((p: any, i: number) => {
-        if (y > 260) { pdf.addPage(); y = 20; }
-        
-        pdf.text(`${i + 1}.`, persCol1, y);
-        pdf.text(`${p.role}`, persCol2, y);
-        pdf.text(`:`, persCol3, y);
-        pdf.text(`${p.user?.name || 'Belum ada'}`, persCol4, y);
-        y += 6;
-      });
-    }
-
-    // === 3. DAFTAR LAGU ===
-    y += 8;
-    pdf.setFont('times', 'bold');
-    pdf.text('3. Daftar Lagu yang Dibawakan', col1, y);
-    pdf.setFont('times', 'normal');
-    y += 8;
-
-    const songCol1 = col1 + 5;
-
-    if (songs.length === 0) {
-      pdf.text('- Belum ada lagu yang tercatat.', songCol1, y);
-      y += 6;
-    } else {
-      songs.forEach((song: any, i: number) => {
-        if (y > 260) { pdf.addPage(); y = 20; }
-        pdf.text(`${i + 1}. ${song.title}${song.artist ? ' - ' + song.artist : ''}`, songCol1, y);
-        y += 6;
-      });
-    }
-
-    // === PENUTUP & TANDA TANGAN ===
-    y += 12;
-    
-    // ** PENCEGAHAN HALAMAN TERPOTONG **
-    // Jika posisi y terlalu dekat dengan batas bawah (297)
-    if (y > 240) { 
-        pdf.addPage();
-        y = 20; 
-    }
-    // **********************************
-
-    const closingLines = pdf.splitTextToSize(
-      `Demikian laporan kegiatan ini kami sampaikan. Besar harapan kami laporan ini dapat memberikan gambaran menyeluruh mengenai pelaksanaan kegiatan yang telah dilaksanakan. Atas perhatian dan kerja samanya kami ucapkan terima kasih.`,
-      165
-    );
-    pdf.text(closingLines, col1 + 5, y); // Indent 5
-    y += closingLines.length * 6 + 12;
-
-    // Penempatan Tanda Tangan
-    const ttdX = 140; // Posisi x Tanda Tangan
-    const ttdGap = 25; // Jarak kosong untuk TTD
-    const ttdWidth = 40; // Lebar TTD (unit default jsPDF, biasanya mm)
-    const ttdHeight = 20; // Tinggi TTD (sesuaikan agar proporsional)
-
-    // ** PENCEGAHAN HALAMAN TERPOTONG (Kedua) **
-    if (y > 255) { // Cek lagi sebelum mencetak TTD
-        pdf.addPage();
-        y = 20;
-    }
-    // **********************************
-    
-    // Teks Hormat Kami
-    pdf.text('Hormat kami,', ttdX, y);
-    y += 2; // Geser y sedikit ke bawah untuk memberi ruang antara teks dan gambar ttd
-    
-    // Tambahkan Gambar Tanda Tangan (TTD)
-    pdf.addImage(ttdImg, 'JPEG', ttdX, y, ttdWidth, ttdHeight); // X, Y, Width, Height
-    y += ttdGap; // Lompat ke bawah setelah area TTD
-
-    pdf.setFont('times', 'normal');
-    pdf.text('Jones Morgan', ttdX, y); // Nama penanggung jawab
-    
-    // Buat garis penanda TTD
-    pdf.line(ttdX - 2, y + 1, ttdX + 40, y + 1); // Garis bawah nama
-    y += 6;
-    
-    pdf.setFont('times', 'bold');
-    pdf.text('Ketua UKM Band BINUS Bekasi', ttdX, y); // Jabatan
-
-
-    // === FOOTER ===
-    const pageHeight = pdf.internal.pageSize.height;
-    pdf.setFontSize(9);
-    pdf.setTextColor(150, 150, 150);
-    pdf.text(
-      'Dokumen ini dihasilkan secara otomatis oleh UKM Band Bekasi Dashboard',
-      105,
-      pageHeight - 8,
-      { align: 'center' }
-    );
-
-    // Simpan file
-    const fileName = `Surat_Laporan_${event.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-    pdf.save(fileName);
-
-    toast({
-      title: 'Berhasil',
-      description: 'Surat laporan event berhasil diunduh',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    toast({
-      title: 'Error',
-      description: 'Gagal membuat surat laporan',
-      status: 'error',
-      duration: 3000,
-      isClosable: true,
-    });
-  } finally {
-    setDownloadingPdf(null);
-  }
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    toast({ 
+      title: 'Error',
+      description: 'Gagal membuat surat kesanggupan', 
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
+  } finally {
+    setDownloadingPdf(null);
+  }
 };
 
 
@@ -556,6 +581,14 @@ export default function ManagerEventsPage() {
   };
 
   const stats = getStats();
+
+  // Color mapping for stats boxes
+  const statColorMap: { [key: string]: { bg: string, color: string } } = {
+    total: { bg: bgAccentLight, color: '#3182CE' }, // Blue.600
+    published: { bg: bgAccentLight, color: '#38A169' }, // Green.600
+    upcoming: { bg: bgAccentLight, color: '#805AD5' }, // Purple.600
+    finished: { bg: bgAccentLight, color: '#ED8936' }, // Orange.600
+  };
 
   if (status === 'loading' || loading) {
     return (
@@ -603,12 +636,13 @@ export default function ManagerEventsPage() {
               _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
               transition="all 0.2s"
             >
-               Event Baru
+              Event Baru
             </Button>
           </Flex>
 
           {/* Stats Cards - Compact */}
           <SimpleGrid columns={{ base: 2, lg: 4 }} spacing="4">
+            {/* Total Event */}
             <Card
               bg={bgMain}
               shadow="sm"
@@ -623,9 +657,9 @@ export default function ManagerEventsPage() {
                 <HStack spacing="3" align="center">
                   <Box
                     p="2"
-                    bg={useColorModeValue('blue.50', 'blue.900')}
+                    bg={statColorMap.total.bg}
                     borderRadius="lg"
-                    color={useColorModeValue('blue.600', 'blue.400')}
+                    color={statColorMap.total.color}
                   >
                     <CalendarDaysIcon width={20} height={20} />
                   </Box>
@@ -641,6 +675,7 @@ export default function ManagerEventsPage() {
               </CardBody>
             </Card>
 
+            {/* Dipublikasikan */}
             <Card
               bg={bgMain}
               shadow="sm"
@@ -655,9 +690,9 @@ export default function ManagerEventsPage() {
                 <HStack spacing="3" align="center">
                   <Box
                     p="2"
-                    bg={useColorModeValue('green.50', 'green.900')}
+                    bg={statColorMap.published.bg}
                     borderRadius="lg"
-                    color={useColorModeValue('green.600', 'green.400')}
+                    color={statColorMap.published.color}
                   >
                     <CalendarDaysIcon width={20} height={20} />
                   </Box>
@@ -665,7 +700,7 @@ export default function ManagerEventsPage() {
                     <Text fontSize="xs" color={textSecondary} fontWeight="500">
                       Dipublikasikan
                     </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('green.600', 'green.400')}>
+                    <Text fontSize="2xl" fontWeight="bold" color={statColorMap.published.color}>
                       {stats.published}
                     </Text>
                   </VStack>
@@ -673,6 +708,7 @@ export default function ManagerEventsPage() {
               </CardBody>
             </Card>
 
+            {/* Event Aktif */}
             <Card
               bg={bgMain}
               shadow="sm"
@@ -687,9 +723,9 @@ export default function ManagerEventsPage() {
                 <HStack spacing="3" align="center">
                   <Box
                     p="2"
-                    bg={useColorModeValue('purple.50', 'purple.900')}
+                    bg={statColorMap.upcoming.bg}
                     borderRadius="lg"
-                    color={useColorModeValue('purple.600', 'purple.400')}
+                    color={statColorMap.upcoming.color}
                   >
                     <ClockIcon width={20} height={20} />
                   </Box>
@@ -697,7 +733,7 @@ export default function ManagerEventsPage() {
                     <Text fontSize="xs" color={textSecondary} fontWeight="500">
                       Event Aktif
                     </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('purple.600', 'purple.400')}>
+                    <Text fontSize="2xl" fontWeight="bold" color={statColorMap.upcoming.color}>
                       {stats.upcoming}
                     </Text>
                   </VStack>
@@ -705,6 +741,7 @@ export default function ManagerEventsPage() {
               </CardBody>
             </Card>
 
+            {/* Selesai */}
             <Card
               bg={bgMain}
               shadow="sm"
@@ -719,9 +756,9 @@ export default function ManagerEventsPage() {
                 <HStack spacing="3" align="center">
                   <Box
                     p="2"
-                    bg={useColorModeValue('orange.50', 'orange.900')}
+                    bg={statColorMap.finished.bg}
                     borderRadius="lg"
-                    color={useColorModeValue('orange.600', 'orange.400')}
+                    color={statColorMap.finished.color}
                   >
                     <CalendarDaysIcon width={20} height={20} />
                   </Box>
@@ -729,7 +766,7 @@ export default function ManagerEventsPage() {
                     <Text fontSize="xs" color={textSecondary} fontWeight="500">
                       Selesai
                     </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={useColorModeValue('orange.600', 'orange.400')}>
+                    <Text fontSize="2xl" fontWeight="bold" color={statColorMap.finished.color}>
                       {stats.finished}
                     </Text>
                   </VStack>
@@ -795,13 +832,13 @@ export default function ManagerEventsPage() {
           {/* Events Grid */}
           {filteredEvents.length === 0 ? (
             <Box
-              bg={useColorModeValue('gray.50', 'gray.800')}
+              bg={'gray.50'} // Mengganti useColorModeValue('gray.50', 'gray.800')
               borderRadius="2xl"
               p="12"
               textAlign="center"
             >
               <VStack spacing="4">
-                <Box p="4" bg={useColorModeValue('gray.100', 'gray.700')} borderRadius="xl" color={textSecondary}>
+                <Box p="4" bg={'gray.100'} borderRadius="xl" color={textSecondary}> {/* Mengganti useColorModeValue('gray.100', 'gray.700') */}
                   <CalendarDaysIcon width={48} height={48} />
                 </Box>
                 <Text fontSize="xl" fontWeight="medium" color={textPrimary}>
@@ -830,7 +867,7 @@ export default function ManagerEventsPage() {
                   _hover={{ shadow: 'md', transform: 'translateY(-2px)', cursor: 'pointer' }}
                   onClick={() => openFloatingWindow(event)}
                 >
-                  <CardHeader bg={useColorModeValue('gray.50', 'gray.800')} p="4">
+                  <CardHeader bg={'gray.50'} p="4"> {/* Mengganti useColorModeValue('gray.50', 'gray.800') */}
                     <Flex justify="space-between" align="start" gap="3">
                       <Box flex="1">
                         <Heading size="sm" color={textPrimary} mb="1" fontWeight="semibold">
@@ -915,7 +952,7 @@ export default function ManagerEventsPage() {
                                 <Badge
                                   colorScheme={
                                     personnel.status === 'APPROVED' ? 'green' :
-                                    personnel.status === 'PENDING' ? 'yellow' : 'red'
+                                      personnel.status === 'PENDING' ? 'yellow' : 'red'
                                   }
                                   fontSize="8px"
                                   px="1"
@@ -930,7 +967,7 @@ export default function ManagerEventsPage() {
                         </SimpleGrid>
                       </Box>
 
-                      </VStack>
+                    </VStack>
                   </CardBody>
                 </Card>
               ))}
@@ -949,7 +986,7 @@ export default function ManagerEventsPage() {
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
         <ModalContent borderRadius="2xl" overflow="hidden">
           <ModalHeader
-            bg={useColorModeValue('gray.50', 'gray.800')}
+            bg={'gray.50'} // Mengganti useColorModeValue('gray.50', 'gray.800')
             borderBottomWidth="1px"
             borderColor={borderColor}
           >
@@ -968,321 +1005,262 @@ export default function ManagerEventsPage() {
           <ModalCloseButton />
           <ModalBody p="6">
             {selectedEvent && (
-              <VStack spacing="6" align="stretch">
-                {/* Event Info */}
-                <Box>
-                  <Text fontWeight="semibold" color={textPrimary} mb="3">Informasi Event</Text>
-                  <VStack align="start" spacing="3">
-                    <HStack spacing="3">
-                      <Text fontWeight="medium" color={textSecondary} minW="120px">Status:</Text>
-                      <Badge
-                        colorScheme={getStatusColor(selectedEvent.status)}
-                        fontSize="sm"
-                        px="3"
-                        py="1"
-                        borderRadius="md"
-                      >
-                        {getStatusText(selectedEvent.status)}
-                      </Badge>
-                    </HStack>
-                    <HStack spacing="3">
-                      <Text fontWeight="medium" color={textSecondary} minW="120px">Tanggal:</Text>
-                      <Text color={textPrimary}>
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing="6">
+                {/* Kolom 1: Event Info */}
+                <VStack align="stretch" spacing="4" gridColumn={{ base: 'span 1', md: 'span 2' }}>
+                  <Heading size="md" color={textPrimary} borderBottom="1px solid" borderColor={borderColor} pb="2">
+                    Informasi Dasar
+                  </Heading>
+                  <HStack justify="space-between">
+                    <Text fontWeight="semibold" color={textPrimary}>Status:</Text>
+                    <Badge
+                      colorScheme={getStatusColor(selectedEvent.status)}
+                      fontSize="sm"
+                      px="3"
+                      py="1"
+                      borderRadius="full"
+                      fontWeight="semibold"
+                    >
+                      {getStatusText(selectedEvent.status)}
+                    </Badge>
+                  </HStack>
+
+                  <HStack spacing="3" align="start">
+                    <CalendarDaysIcon width={20} height={20} color={textSecondary} />
+                    <Box>
+                      <Text fontSize="sm" color={textSecondary}>Tanggal & Waktu</Text>
+                      <Text fontWeight="medium" color={textPrimary}>
                         {new Date(selectedEvent.date).toLocaleString('id-ID', {
                           weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
                           day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
                       </Text>
-                    </HStack>
-                    <HStack spacing="3">
-                      <Text fontWeight="medium" color={textSecondary} minW="120px">Lokasi:</Text>
-                      <Text color={textPrimary}>{selectedEvent.location}</Text>
-                    </HStack>
-                    {selectedEvent.description && (
-                      <HStack spacing="3" align="start">
-                        <Text fontWeight="medium" color={textSecondary} minW="120px">Deskripsi:</Text>
-                        <Text color={textPrimary} flex="1">
-                          {selectedEvent.description}
-                        </Text>
-                      </HStack>
-                    )}
-                  </VStack>
-                </Box>
+                    </Box>
+                  </HStack>
 
-                {/* Personnel */}
-                <Box>
-                  <Text fontWeight="semibold" color={textPrimary} mb="3">
-                    Daftar Personel ({selectedEvent.personnel.filter((p: any) => p.user).length} / {selectedEvent.personnel.length})
-                  </Text>
-                  <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
-                    {selectedEvent.personnel.map((personnel: any) => (
-                      <Box
-                        key={personnel.id}
-                        p="3"
-                        bg={useColorModeValue('gray.50', 'gray.800')}
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        borderColor={borderColor}
-                      >
-                        <Flex justify="space-between" align="center">
-                          <HStack spacing="3">
-                            <Avatar
-                              size="sm"
-                              name={personnel.user?.name || personnel.role}
-                              bg={personnel.user ? accentColor : 'gray.400'}
-                            />
-                            <Box>
-                              <Text fontWeight="medium" color={textPrimary}>
-                                {personnel.role}
+                  <HStack spacing="3" align="start">
+                    <MapPinIcon width={20} height={20} color={textSecondary} />
+                    <Box>
+                      <Text fontSize="sm" color={textSecondary}>Lokasi</Text>
+                      <Text fontWeight="medium" color={textPrimary}>{selectedEvent.location}</Text>
+                    </Box>
+                  </HStack>
+
+                  <Box>
+                    <Text fontSize="sm" color={textSecondary}>Deskripsi</Text>
+                    <Text color={textPrimary} mt="1">
+                      {selectedEvent.description || 'Tidak ada deskripsi.'}
+                    </Text>
+                  </Box>
+
+                  <Divider />
+
+                  <HStack spacing="3">
+                    <Button
+                      leftIcon={<PencilIcon width={18} height={18} />}
+                      size="sm"
+                      onClick={() => {
+                        setIsFloatingOpen(false);
+                        openEditEvent(selectedEvent);
+                      }}
+                      colorScheme="red"
+                      variant="outline"
+                      _hover={{ bg: bgAccentLight }}
+                    >
+                      Edit Detail Event
+                    </Button>
+                  </HStack>
+                </VStack>
+
+                {/* Kolom 2: Personnel & Songs (Sisi Kanan) */}
+                <VStack align="stretch" spacing="6">
+                  {/* Personel List */}
+                  <Box>
+                    <Heading size="sm" color={textPrimary} mb="3">
+                      Personel ({selectedEvent.personnel.filter((p: any) => p.user).length}/{selectedEvent.personnel.length})
+                    </Heading>
+                    <VStack align="stretch" spacing="3" maxH="200px" overflowY="auto" p="2" bg={'gray.50'} borderRadius="md">
+                      {selectedEvent.personnel.map((p: any) => (
+                        <HStack key={p.id} spacing="3" justify="space-between" p="1" borderRadius="md">
+                          <HStack minW="0" flex="1">
+                            <Avatar size="sm" name={p.user?.name || p.role} bg={p.user ? accentColor : 'gray.400'} />
+                            <Box minW="0" flex="1">
+                              <Text fontSize="sm" fontWeight="medium" color={textPrimary} noOfLines={1}>
+                                {p.user?.name || 'Belum Ada'}
                               </Text>
-                              <Text fontSize="xs" color={textSecondary}>
-                                {personnel.user?.name || 'Belum terisi'}
+                              <Text fontSize="xs" color={textSecondary} noOfLines={1}>
+                                {p.role}
                               </Text>
                             </Box>
                           </HStack>
-                          {personnel.user && (
+                          {p.user && (
                             <Badge
-                              colorScheme={
-                                personnel.status === 'APPROVED' ? 'green' :
-                                personnel.status === 'PENDING' ? 'yellow' : 'red'
-                              }
-                              fontSize="xs"
+                              colorScheme={p.status === 'APPROVED' ? 'green' : p.status === 'PENDING' ? 'yellow' : 'red'}
+                              fontSize="9px"
                               px="2"
-                              py="1"
-                              borderRadius="md"
+                              py="0.5"
+                              borderRadius="full"
                             >
-                              {personnel.status}
+                              {p.status}
                             </Badge>
                           )}
-                        </Flex>
-                      </Box>
-                    ))}
-                  </SimpleGrid>
-                </Box>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  </Box>
 
-                {/* Songs Section */}
-                <Box>
-                  <Text fontWeight="semibold" color={textPrimary} mb="3">
-                    Lagu yang Akan Dibawakan ({eventSongs.length})
-                  </Text>
-                  {loadingSongs ? (
-                    <Flex justify="center" align="center" py="6">
-                      <Spinner size="md" color={accentColor} />
-                      <Text ml="3" color={textSecondary}>Memuat lagu...</Text>
-                    </Flex>
-                  ) : eventSongs.length === 0 ? (
-                    <Box
-                      bg={useColorModeValue('gray.50', 'gray.800')}
-                      borderRadius="lg"
-                      p="6"
-                      textAlign="center"
-                      borderWidth="1px"
-                      borderColor={borderColor}
-                    >
-                      <VStack spacing="3">
-                        <Box p="3" bg={useColorModeValue('gray.100', 'gray.700')} borderRadius="lg" color={textSecondary}>
-                          <MusicalNoteIcon width={32} height={32} />
-                        </Box>
-                        <Text color={textSecondary}>Belum ada lagu yang ditambahkan untuk event ini</Text>
-                      </VStack>
-                    </Box>
-                  ) : (
-                    <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
-                      {eventSongs.map((song: any) => (
-                        <Box
-                          key={song.id}
-                          p="3"
-                          bg={useColorModeValue('gray.50', 'gray.800')}
-                          borderRadius="lg"
-                          borderWidth="1px"
-                          borderColor={borderColor}
-                          _hover={{ shadow: 'md', transform: 'translateY(-1px)' }}
-                          transition="all 0.2s"
-                        >
-                          <VStack align="start" spacing="2">
-                            <HStack spacing="2" justify="space-between" w="full">
-                              <Text fontWeight="medium" color={textPrimary} noOfLines={1}>
-                                {song.order}. {song.title}
+                  {/* Songs List */}
+                  <Box>
+                    <HStack justify="space-between" mb="3">
+                      <Heading size="sm" color={textPrimary}>
+                        Lagu ({eventSongs.length})
+                      </Heading>
+                    </HStack>
+                    <VStack align="stretch" spacing="2" maxH="200px" overflowY="auto" p="2" bg={'gray.50'} borderRadius="md">
+                      {loadingSongs ? (
+                        <Spinner size="sm" color={accentColor} />
+                      ) : eventSongs.length > 0 ? (
+                        eventSongs.map((song, index) => (
+                          <HStack key={song.id} spacing="2" align="center">
+                            <Text fontSize="sm" color={textPrimary}>
+                              {index + 1}.
+                            </Text>
+                            <Box flex="1" minW="0">
+                              <Text fontSize="sm" fontWeight="medium" color={textPrimary} noOfLines={1}>
+                                {song.title}
                               </Text>
                               {song.artist && (
-                                <Badge
-                                  colorScheme="purple"
-                                  fontSize="xs"
-                                  px="2"
-                                  py="1"
-                                  borderRadius="md"
-                                >
+                                <Text fontSize="xs" color={textSecondary} noOfLines={1}>
                                   {song.artist}
-                                </Badge>
+                                </Text>
                               )}
-                            </HStack>
-                            {song.key && (
-                              <Text fontSize="xs" color={textSecondary}>
-                                Nada: {song.key}
-                              </Text>
-                            )}
-                            {song.duration && (
-                              <Text fontSize="xs" color={textSecondary}>
-                                Durasi: {song.duration}
-                              </Text>
-                            )}
-                            {song.notes && (
-                              <Text fontSize="xs" color={textSecondary} noOfLines={2}>
-                                Catatan: {song.notes}
-                              </Text>
-                            )}
-                          </VStack>
-                        </Box>
-                      ))}
-                    </SimpleGrid>
-                  )}
-                </Box>
-              </VStack>
+                            </Box>
+                          </HStack>
+                        ))
+                      ) : (
+                        <Text fontSize="sm" color={textSecondary}>Tidak ada lagu yang ditambahkan.</Text>
+                      )}
+                    </VStack>
+                  </Box>
+                </VStack>
+              </SimpleGrid>
             )}
           </ModalBody>
           <ModalFooter
             borderTopWidth="1px"
             borderColor={borderColor}
-            p="6"
+            bg={'gray.50'} // Mengganti useColorModeValue('gray.50', 'gray.800')
           >
             <Button
-              variant="ghost"
-              mr={3}
+              variant="outline"
               onClick={() => setIsFloatingOpen(false)}
+              mr="3"
             >
               Tutup
             </Button>
             <Button
-              colorScheme="blue"
-              onClick={() => {
-                if (selectedEvent) {
-                  downloadEventReport(selectedEvent);
-                }
-              }}
-              isLoading={downloadingPdf === selectedEvent?.id}
-              loadingText="Downloading..."
-              leftIcon={<ArrowDownTrayIcon width={16} height={16} />}
-              mr={3}
-            >
-              Download Report
-            </Button>
-            <Button
+              leftIcon={<ArrowDownTrayIcon width={18} height={18} />}
               colorScheme="red"
-              onClick={() => {
-                if (selectedEvent) {
-                  goToEventSongs(selectedEvent.id);
-                  setIsFloatingOpen(false);
-                }
-              }}
+              bg={accentColor}
+              color="white"
+              onClick={() => selectedEvent && downloadEventReport(selectedEvent)}
+              isLoading={downloadingPdf === selectedEvent?.id}
+              loadingText="Mengunduh..."
+              _hover={{ bg: '#a31f1f' }}
             >
-              Kelola Lagu
+              Unduh Laporan PDF
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Edit Event Modal */}
-      <Modal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        size="2xl"
-        isCentered
-      >
+      <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} size="lg" isCentered>
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl" overflow="hidden">
-          <ModalHeader
-            bg={useColorModeValue('gray.50', 'gray.800')}
-            borderBottomWidth="1px"
-            borderColor={borderColor}
-          >
-            <HStack spacing="3">
-              <PencilIcon width={24} height={24} color={accentColor} />
-              <Box>
-                <Text fontSize="xl" fontWeight="bold" color={textPrimary}>
-                  Edit Event
-                </Text>
-                <Text fontSize="sm" color={textSecondary}>
-                  Perbarui informasi event
-                </Text>
-              </Box>
-            </HStack>
-          </ModalHeader>
+        <ModalContent borderRadius="2xl">
+          <ModalHeader color={textPrimary}>Edit Event: {selectedEvent?.title}</ModalHeader>
           <ModalCloseButton />
-          <ModalBody p="6">
-            <VStack spacing="4" align="stretch">
+          <ModalBody pb="6">
+            <VStack spacing="4" as="form" onSubmit={(e) => { e.preventDefault(); handleUpdateEvent(); }}>
               <FormControl isRequired>
-                <FormLabel color={textPrimary} fontWeight="semibold">Judul Event</FormLabel>
+                <FormLabel htmlFor="edit-title" color={textPrimary}>Judul Event</FormLabel>
                 <Input
+                  id="edit-title"
                   value={editEvent.title}
                   onChange={(e) => setEditEvent({ ...editEvent, title: e.target.value })}
-                  borderRadius="xl"
+                  placeholder="Nama Acara"
+                  borderRadius="lg"
                 />
               </FormControl>
 
               <FormControl>
-                <FormLabel color={textPrimary} fontWeight="semibold">Deskripsi</FormLabel>
+                <FormLabel htmlFor="edit-description" color={textPrimary}>Deskripsi</FormLabel>
                 <Textarea
+                  id="edit-description"
                   value={editEvent.description}
                   onChange={(e) => setEditEvent({ ...editEvent, description: e.target.value })}
-                  rows={3}
-                  borderRadius="xl"
+                  placeholder="Deskripsi singkat acara (opsional)"
+                  borderRadius="lg"
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={textPrimary} fontWeight="semibold">Tanggal & Waktu</FormLabel>
+                <FormLabel htmlFor="edit-date" color={textPrimary}>Tanggal & Waktu</FormLabel>
                 <Input
+                  id="edit-date"
                   type="datetime-local"
                   value={editEvent.date}
                   onChange={(e) => setEditEvent({ ...editEvent, date: e.target.value })}
-                  borderRadius="xl"
+                  borderRadius="lg"
+                  color="darkgrey"
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={textPrimary} fontWeight="semibold">Lokasi</FormLabel>
+                <FormLabel htmlFor="edit-location" color={textPrimary}>Lokasi</FormLabel>
                 <Input
+                  id="edit-location"
                   value={editEvent.location}
                   onChange={(e) => setEditEvent({ ...editEvent, location: e.target.value })}
-                  borderRadius="xl"
+                  placeholder="Contoh: Lapangan Kampus"
+                  borderRadius="lg"
                 />
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel color={textPrimary} fontWeight="semibold">Status</FormLabel>
+                <FormLabel htmlFor="edit-status" color={textPrimary}>Status</FormLabel>
                 <Select
+                  id="edit-status"
                   value={editEvent.status}
                   onChange={(e) => setEditEvent({ ...editEvent, status: e.target.value as EventStatus })}
-                  borderRadius="xl"
+                  borderRadius="lg"
+                  color="darkgrey"
                 >
                   <option value="DRAFT">Draft</option>
+                  <option value="SUBMITTED">Menunggu Persetujuan</option>
                   <option value="PUBLISHED">Dipublikasikan</option>
                   <option value="FINISHED">Selesai</option>
+                  <option value="REJECTED">Ditolak</option>
                 </Select>
               </FormControl>
             </VStack>
           </ModalBody>
-          <ModalFooter
-            borderTopWidth="1px"
-            borderColor={borderColor}
-            p="6"
-          >
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={() => setIsEditOpen(false)}
-            >
+
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} mr={3}>
               Batal
             </Button>
             <Button
               colorScheme="red"
+              bg={accentColor}
+              color="white"
               onClick={handleUpdateEvent}
               isLoading={isSubmitting}
-              loadingText="Menyimpan..."
+              _hover={{ bg: '#a31f1f' }}
             >
               Simpan Perubahan
             </Button>

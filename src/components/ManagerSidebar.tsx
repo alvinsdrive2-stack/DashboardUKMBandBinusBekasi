@@ -54,12 +54,7 @@ export default function ManagerSidebar({ activeRoute }: ManagerSidebarProps) {
       label: 'Monitoring Member',
       icon: UsersIcon,
       route: '/dashboard/manager/members',
-    },
-    {
-      label: 'Laporan',
-      icon: ClipboardDocumentIcon,
-      route: '/dashboard/manager/reports',
-    },
+    }
   ];
 
   const isActive = (route: string) => {
@@ -102,13 +97,11 @@ export default function ManagerSidebar({ activeRoute }: ManagerSidebarProps) {
         <VStack spacing="2" align="start">
           <HStack spacing="3">
             <Box
-              bg={accentColor}
               p="1.5"
               borderRadius="xl"
               display="flex"
               alignItems="center"
               justifyContent="center"
-              boxShadow="0 4px 12px rgba(220, 38, 38, 0.3)"
             >
               <img
                 src="https://i.imgur.com/YZICojL.png"

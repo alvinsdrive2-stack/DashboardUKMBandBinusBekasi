@@ -46,7 +46,8 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import ManagerSidebar from '@/components/ManagerSidebar';
-import { useManagerSongs } from '@/hooks/useManagerData';
+import { useManagerSongs, ManagerSong } from '@/hooks/useManagerData';
+import { EventSong } from '@/generated/prisma';
 
 interface SongWithEvent extends EventSong {
   event: {
@@ -73,7 +74,7 @@ export default function ManagerSongsPage() {
   // State hooks
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEvent, setFilterEvent] = useState('');
-  const [selectedSong, setSelectedSong] = useState<any | null>(null);
+  const [selectedSong, setSelectedSong] = useState<ManagerSong | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Use React Query for data fetching
@@ -130,7 +131,7 @@ export default function ManagerSongsPage() {
     return matchesSearch && matchesEvent;
   });
 
-  const openSongDetail = (song: SongWithEvent) => {
+  const openSongDetail = (song: ManagerSong) => {
     setSelectedSong(song);
     setIsDetailOpen(true);
   };

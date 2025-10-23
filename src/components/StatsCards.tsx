@@ -90,7 +90,7 @@ export default function StatsCards({
             </VStack>
             {isTopPerformer && (
               <Badge bg={warningColor} color="white" px="2" py="1" borderRadius="full" fontSize="xs">
-                <StarIcon width={12} height={12} display="inline" mr="1" />
+                <StarIcon width={12} height={12} display="inline" style={{ marginLeft: '4px' }} />
                 TOP
               </Badge>
             )}
@@ -181,7 +181,7 @@ export default function StatsCards({
             </VStack>
             {rank > 0 && totalMembers > 0 && (
               <Badge bg={purpleBg} color={purpleColor} px="2" py="1" borderRadius="full" fontSize="xs">
-                <TrophyIcon width={12} height={12} display="inline" mr="1" />
+                <TrophyIcon width={12} height={12} display="inline" style={{ marginLeft: '4px' }} />
                 #{rank}
               </Badge>
             )}

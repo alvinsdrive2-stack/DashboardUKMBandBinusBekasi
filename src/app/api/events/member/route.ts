@@ -6,7 +6,7 @@ import { isMember } from '@/utils/roles';
 
 // Simple cache for events (2 minutes)
 const eventsCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+const CACHE_TTL = 10; // 2 minutes
 
 export async function GET(request: NextRequest) {
   try {

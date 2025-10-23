@@ -10,6 +10,8 @@ import {
   Text,
   VStack,
   HStack,
+  Flex,
+  SimpleGrid,
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';

@@ -21,8 +21,7 @@ const roleToInstrumentMap: { [key: string]: string[] } = {
 
 export async function POST(
   request: NextRequest,
-  // Pastikan parameter ini di-destructure dengan benar
-  { params }: { params: { id: string } } 
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now();
 
@@ -47,8 +46,8 @@ export async function POST(
       );
     }
 
-    // 'params' seharusnya langsung berisi objek, bukan Promise
-    const { id: eventId } = params; 
+    // Await params to get the id (Next.js 15 change)
+    const { id: eventId } = await params; 
     const userId = session.user.id;
 
     // 3. Transaction for Data Integrity and Lookups

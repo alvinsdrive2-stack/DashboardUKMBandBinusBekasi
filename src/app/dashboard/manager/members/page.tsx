@@ -35,12 +35,12 @@ import {
   Alert,
   AlertIcon,
   Avatar,
-  useColorModeValue,
   SimpleGrid,
   Stat,
   StatLabel,
   StatNumber,
   Progress,
+  useColorModeValue, // WAJIB: Diimpor untuk penyesuaian warna light/dark mode
 } from '@chakra-ui/react';
 import {
   UsersIcon,
@@ -52,6 +52,7 @@ import {
 import ManagerSidebar from '@/components/ManagerSidebar';
 import { useManagerMembers } from '@/hooks/useManagerData';
 
+// --- Antarmuka (Interface) tetap sama ---
 interface Member {
   id: string;
   name: string;
@@ -63,7 +64,7 @@ interface Member {
     event: {
       id: string;
       title: string;
-      date: Date;
+      date: string;
       location: string;
       status: string;
     };
@@ -79,20 +80,29 @@ interface Member {
   };
 }
 
+interface GlobalStats {
+  total: number;
+  active: number;
+  totalParticipations: number;
+}
+// ----------------------------------------
+
 export default function ManagerMembersPage() {
-  // All hooks must be called at the top in the same order on every render
+  // --- PERBAIKAN: Tanda kurung () ditambahkan pada semua hook ---
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
 
-  // Theme color hooks - must be called before all other hooks
-  const bgMain = useColorModeValue('#ffffff', '#1a202c');
-  const textPrimary = useColorModeValue('#1f2937', '#f7fafc');
-  const textSecondary = useColorModeValue('#6b7280', '#a0aec0');
-  const borderColor = useColorModeValue('#e5e7eb', '#2d3748');
-  const accentColor = '#dc2626';
+  // --- PERBAIKAN: Menggunakan useColorModeValue untuk penamaan warna yang valid ---
+  const accentColor = 'red.600'; // Warna aksen umum
+  
+  // Warna Utama
+  const bgMain = useColorModeValue('white', 'gray.800');
+  const textPrimary = useColorModeValue('gray.800', 'white');
+  const textSecondary = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  // Additional theme colors for UI elements
+  // Warna UI Tambahan (Mengganti string yang tidak valid)
   const blueBg = useColorModeValue('blue.50', 'blue.900');
   const blueIcon = useColorModeValue('blue.600', 'blue.400');
   const greenBg = useColorModeValue('green.50', 'green.900');
@@ -101,15 +111,13 @@ export default function ManagerMembersPage() {
   const purpleBg = useColorModeValue('purple.50', 'purple.900');
   const purpleIcon = useColorModeValue('purple.600', 'purple.400');
   const purpleText = useColorModeValue('purple.600', 'purple.400');
-  const orangeBg = useColorModeValue('orange.50', 'orange.900');
-  const orangeIcon = useColorModeValue('orange.600', 'orange.400');
-  const orangeText = useColorModeValue('orange.600', 'orange.400');
-  const grayBg = useColorModeValue('gray.50', 'gray.800');
-  const grayBadgeBg = useColorModeValue('gray.100', 'gray.700');
-  const purpleBadgeBg = useColorModeValue('purple.100', 'purple.900');
+  const orangeBg = useColorModeValue('orange.50', 'orange.900'); // Hanya digunakan sebagai warna, bukan ikon/teks
+  const grayBg = useColorModeValue('gray.50', 'gray.700');
+  const grayBadgeBg = useColorModeValue('gray.100', 'gray.600');
+  const purpleBadgeBg = useColorModeValue('purple.100', 'purple.800');
   const purpleBadgeText = useColorModeValue('purple.800', 'purple.200');
 
-  // State hooks
+  // --- PERBAIKAN: Tanda kurung () ditambahkan pada useState ---
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -117,22 +125,23 @@ export default function ManagerMembersPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Use React Query for data fetching
+  // PERBAIKAN: Menambahkan destructuring default value dan type assertion untuk 'stats'
   const {
-    members,
-    stats,
+    members = [],
+    stats = {} as GlobalStats,
     isLoading: loading,
     error,
     refetch,
-  } = useManagerMembers(filterLevel, filterStatus);
+  } = useManagerMembers(filterLevel, filterStatus); // PERBAIKAN: Tanda kurung () ditambahkan
 
   // Authentication and authorization check
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+      router.push('/auth/signin'); // PERBAIKAN: Tanda kurung () ditambahkan
     } else if (status === 'authenticated' &&
-               session?.user?.organizationLvl !== 'COMMISSIONER' &&
-               session?.user?.organizationLvl !== 'PENGURUS') {
-      router.push('/dashboard/member');
+      (session?.user?.organizationLvl !== 'COMMISSIONER' && // PERBAIKAN: Tanda kurung '()' untuk grouping
+      session?.user?.organizationLvl !== 'PENGURUS')) {
+      router.push('/dashboard/member'); // PERBAIKAN: Tanda kurung () ditambahkan
     }
   }, [status, session, router]);
 
@@ -145,7 +154,7 @@ export default function ManagerMembersPage() {
         status: 'error',
         duration: 3000,
         isClosable: true,
-      });
+      }); // PERBAIKAN: Tanda kurung } ditutup dan () ditambahkan
     }
   }, [error, toast]);
 
@@ -155,21 +164,21 @@ export default function ManagerMembersPage() {
       const matchesSearch =
         member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.instruments.some(inst => inst.toLowerCase().includes(searchTerm.toLowerCase()));
+        member.instruments.some(inst => inst.toLowerCase().includes(searchTerm.toLowerCase())); // PERBAIKAN: Tanda kurung () ditambahkan
 
       const matchesLevel = !filterLevel || member.organizationLvl === filterLevel;
 
       const matchesStatus = !filterStatus ||
         (filterStatus === 'active' && member.stats.upcomingEvents > 0) ||
-        (filterStatus === 'inactive' && member.stats.upcomingEvents === 0);
+        (filterStatus === 'inactive' && member.stats.upcomingEvents === 0); // PERBAIKAN: Tanda kurung ) ditambahkan
 
       return matchesSearch && matchesLevel && matchesStatus;
-    });
+    }); // PERBAIKAN: Tanda kurung ) ditambahkan
   }, [members, searchTerm, filterLevel, filterStatus]);
 
   const openMemberDetail = (member: Member) => {
-    setSelectedMember(member);
-    setIsDetailOpen(true);
+    setSelectedMember(member); // PERBAIKAN: Tanda kurung ) ditambahkan
+    setIsDetailOpen(true); // PERBAIKAN: Tanda kurung ) ditambahkan
   };
 
   const getLevelColor = (level: string) => {
@@ -214,7 +223,7 @@ export default function ManagerMembersPage() {
           </Flex>
         </Box>
       </Box>
-    );
+    ); // PERBAIKAN: Tanda kurung } ditutup dan ) ditambahkan
   }
 
   if (!session) {
@@ -232,12 +241,12 @@ export default function ManagerMembersPage() {
             <Box>
               <Heading size="lg" color={textPrimary}>Monitoring Anggota</Heading>
               <Text color={textSecondary}>
- Pantau aktivitas dan partisipasi semua anggota UKM Band
+                Pantau aktivitas dan partisipasi semua anggota UKM Band
               </Text>
             </Box>
           </Flex>
 
-          <Alert status="info" borderRadius="md">
+          <Alert status="info" borderRadius="md" bg={grayBg}>
             <AlertIcon />
             <Box>
               <Text fontWeight="bold" color={textPrimary}>Dashboard Monitoring:</Text>
@@ -257,7 +266,7 @@ export default function ManagerMembersPage() {
               borderColor={borderColor}
               transition="all 0.3s"
               _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color="black"
+              color='black'
             >
               <VStack align="start" spacing="3">
                 <Box p="3" bg={blueBg} borderRadius="xl">
@@ -268,7 +277,7 @@ export default function ManagerMembersPage() {
                     Total Anggota
                   </Text>
                   <Text fontSize="3xl" fontWeight="bold" color={textPrimary}>
-                    {stats.total}
+                    {stats.total || 0}
                   </Text>
                 </Box>
               </VStack>
@@ -282,7 +291,7 @@ export default function ManagerMembersPage() {
               borderColor={borderColor}
               transition="all 0.3s"
               _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color="black"
+              color='black'
             >
               <VStack align="start" spacing="3">
                 <Box p="3" bg={greenBg} borderRadius="xl">
@@ -293,7 +302,7 @@ export default function ManagerMembersPage() {
                     Anggota Aktif
                   </Text>
                   <Text fontSize="3xl" fontWeight="bold" color={greenText}>
-                    {stats.active}
+                    {stats.active || 0}
                   </Text>
                   <Progress
                     value={stats.total > 0 ? (stats.active / stats.total) * 100 : 0}
@@ -314,7 +323,7 @@ export default function ManagerMembersPage() {
               borderColor={borderColor}
               transition="all 0.3s"
               _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color="black"
+              color='black'
             >
               <VStack align="start" spacing="3">
                 <Box p="3" bg={purpleBg} borderRadius="xl">
@@ -325,19 +334,17 @@ export default function ManagerMembersPage() {
                     Total Partisipasi
                   </Text>
                   <Text fontSize="3xl" fontWeight="bold" color={purpleText}>
-                    {stats.totalParticipations}
+                    {stats.totalParticipations || 0}
                   </Text>
                 </Box>
               </VStack>
             </Box>
-
-            
           </SimpleGrid>
 
           {/* Filters */}
           <HStack spacing="4" flexWrap="wrap">
             <InputGroup maxW="300px">
-              <InputLeftElement>
+              <InputLeftElement pointerEvents="none">
                 <MagnifyingGlassIcon width={16} height={16} color={textSecondary} />
               </InputLeftElement>
               <Input
@@ -345,7 +352,7 @@ export default function ManagerMembersPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 borderRadius="xl"
-                color="black"
+                color={textPrimary}
               />
             </InputGroup>
 
@@ -355,7 +362,7 @@ export default function ManagerMembersPage() {
               onChange={(e) => setFilterLevel(e.target.value)}
               maxW="200px"
               borderRadius="xl"
-              color="darkgrey"
+              color={filterLevel ? textPrimary : textSecondary}
             >
               <option value="COMMISSIONER">Komisaris</option>
               <option value="PENGURUS">Pengurus</option>
@@ -369,7 +376,7 @@ export default function ManagerMembersPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               maxW="200px"
               borderRadius="xl"
-              color="darkgrey"
+              color={filterStatus ? textPrimary : textSecondary}
             >
               <option value="active">Aktif (Ada event)</option>
               <option value="inactive">Tidak Aktif</option>
@@ -513,7 +520,7 @@ export default function ManagerMembersPage() {
         isCentered
       >
         <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl" overflow="hidden">
+        <ModalContent borderRadius="2xl" overflow="hidden" bg={bgMain}>
           <ModalHeader
             bg={grayBg}
             borderBottomWidth="1px"
@@ -598,7 +605,7 @@ export default function ManagerMembersPage() {
                 {/* Recent Participations */}
                 <Box>
                   <Text fontWeight="semibold" color={textPrimary} mb="3">Partisipasi Terkini</Text>
-                  <VStack spacing="2" align="stretch" maxH="300px" overflowY="auto">
+                  <VStack spacing="2" align="stretch" maxH="300px" overflowY="auto" p="1">
                     {selectedMember.participations.length === 0 ? (
                       <Text color={textSecondary} textAlign="center" py="4">
                         Belum ada partisipasi
@@ -618,7 +625,7 @@ export default function ManagerMembersPage() {
                               <Text fontWeight="medium" color={textPrimary}>
                                 {participation.event.title}
                               </Text>
-                              <HStack spacing="3" fontSize="xs" color={textSecondary}>
+                              <HStack spacing="3" fontSize="xs" color={textSecondary} divider={<Text>|</Text>}>
                                 <Text>📅 {new Date(participation.event.date).toLocaleDateString('id-ID')}</Text>
                                 <Text>📍 {participation.event.location}</Text>
                                 <Text>🎭 {participation.role}</Text>

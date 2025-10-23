@@ -109,13 +109,11 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
       <Box p={{ base: 4, md: 6 }} borderBottom="1px solid" borderColor={borderColor}>
         <HStack spacing="3">
           <Box
-            bg={accentColor}
             p={{ base: 1.5, md: 2 }}
             borderRadius="xl"
             display="flex"
             alignItems="center"
             justifyContent="center"
-            boxShadow="0 4px 12px rgba(220, 38, 38, 0.3)"
           >
             <img
               src="https://i.imgur.com/YZICojL.png"
@@ -190,7 +188,7 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
             {(session.user as any).instruments && (session.user as any).instruments.length > 0 && (
               <Box>
                 <Text fontSize="10px" color={secondaryTextColor} fontWeight="600" mb="2" textTransform="uppercase" letterSpacing="wide">
-                  Instruments
+                  Peran
                 </Text>
                 <VStack spacing="2" align="stretch">
                   <HStack spacing="1" flexWrap="wrap">
@@ -347,14 +345,14 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
     },
     {
       id: 'schedule',
-      label: 'Schedule',
+      label: 'Jadwal Saya',
       icon: CalendarDaysIcon,
       href: '/dashboard/member/schedule',
       description: 'Upcoming Events',
     },
     {
       id: 'events',
-      label: 'Available Events',
+      label: 'Daftar Event',
       icon: CheckCircleIcon,
       href: '/dashboard/member/available-events',
       description: 'Join Events',
@@ -397,8 +395,8 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
         borderRight="1px solid"
         borderColor={borderColor}
         overflow="hidden"
-        displayFlex="flex"
-        flexDirection="column"
+        justifyContent="space-between"
+        height="100%"
       >
         <SidebarContent />
       </Box>
@@ -431,7 +429,6 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
             />
             <HStack spacing="2">
               <Box
-                bg={accentColor}
                 p="1.5"
                 borderRadius="lg"
                 display="flex"

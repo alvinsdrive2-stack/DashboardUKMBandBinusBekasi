@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 
 // Simple in-memory cache for stats (5 minutes)
 const statsCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 10; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {

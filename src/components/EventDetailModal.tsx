@@ -27,13 +27,15 @@ interface EventDetailModalProps {
   onClose: () => void;
   event: EventWithPersonnel | null;
   currentUserId?: string;
+  viewMode?: string;
 }
 
 export default function EventDetailModal({
   isOpen,
   onClose,
   event,
-  currentUserId
+  currentUserId,
+  viewMode
 }: EventDetailModalProps) {
 
   const bgCard = useColorModeValue('#ffffff', '#2d3748');

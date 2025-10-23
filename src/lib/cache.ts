@@ -71,7 +71,7 @@ class RedisCache {
   async get(key: string): Promise<any> {
     try {
       const value = await this.redis.get(key);
-      return value ? JSON.parse(value) : null;
+      return value ? JSON.parse(value as string) : null;
     } catch (error) {
       console.error('Redis get error:', error);
       return null;

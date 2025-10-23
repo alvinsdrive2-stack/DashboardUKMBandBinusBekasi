@@ -90,7 +90,10 @@ export default function AvailableEventsPage() {
       fetchEvents();
     }
   }, [status]);
-
+  const bgMain = '#ffffff';
+  const alertBg = '#f3f4f6';
+  const accentColor = '#dc2626';
+  const accentBg = '#fef2f2';
   const fetchEvents = async () => {
     setContentLoading(true);
     try {
@@ -134,13 +137,13 @@ export default function AvailableEventsPage() {
           prevEvents.map(event =>
             event.id === selectedEvent.id
               ? {
-                ...event,
-                personnel: event.personnel.map(p =>
-                  p.id === personnelId
-                    ? { ...p, userId: session?.user.id, user: { name: session?.user?.name } }
-                    : p
-                )
-              }
+                  ...event,
+                  personnel: event.personnel.map(p =>
+                    p.id === personnelId
+                      ? { ...p, userId: session?.user.id || null, user: session?.user || null }
+                      : p
+                  )
+                } as any
               : event
           )
         );
@@ -289,25 +292,11 @@ export default function AvailableEventsPage() {
               <Heading size="xl" color={textPrimary} fontWeight="extrabold">Daftar Event</Heading>
               <Text color={textSecondary}>Temukan dan daftar event yang tersedia</Text>
             </Box>
-            <Button
-              bg={primaryBg}
-              color={primaryColor}
-              border="1px solid"
-              borderColor="red.200"
-              onClick={fetchEvents}
-              leftIcon={<Icon as={ArrowPathIcon} w={5} h={5} />}
-              isLoading={contentLoading}
-              loadingText="Memuat..."
-              _hover={{ bg: 'red.100', borderColor: 'red.300' }}
-              variant="outline"
-            >
-              Refresh
-            </Button>
           </Flex>
 
           {/* Alert Info */}
-          <Alert status="info" borderRadius="xl" bg="blue.50" borderColor="blue.200" borderWidth="1px" color="blue.700">
-            <AlertIcon color="blue.500" />
+          <Alert status="info" borderRadius="md" bg={alertBg} borderColor={borderColor} borderWidth="1px">
+            <AlertIcon color={accentColor} />
             <Box>
               <Text fontWeight="bold" color="blue.800">Informasi Pendaftaran:</Text>
               <Text fontSize="sm">

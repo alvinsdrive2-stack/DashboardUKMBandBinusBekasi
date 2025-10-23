@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -72,7 +72,7 @@ interface EventInfo {
   userRole: string;
 }
 
-export default function SongsPage() {
+function SongsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -344,7 +344,7 @@ export default function SongsPage() {
             </Text>
             <Button
               colorScheme="red" // Red for primary action
-              onClick={() => router.push('/dashboard/schedule')}
+              onClick={() => router.push('/dashboard/member/schedule')}
               leftIcon={<ChevronLeftIcon boxSize={5} />}
             >
               Kembali ke Jadwal
@@ -374,7 +374,7 @@ export default function SongsPage() {
         <Flex justify="space-between" align="center" mb="6" wrap="wrap" gap={4}>
           <Button
             variant="outline"
-            onClick={() => router.push('/dashboard/schedule')}
+            onClick={() => router.push('/dashboard/member/schedule')}
             leftIcon={<ChevronLeftIcon boxSize={5} />}
             colorScheme="gray" // Netral untuk tombol kembali
           >
@@ -631,3 +631,14 @@ export default function SongsPage() {
     </Box>
   );
 }
+
+// Wrapper with Suspense for useSearchParams
+function SongsPageWrapper() {
+  return (
+    <Suspense fallback={<Box>Loading...</Box>}>
+      <SongsPage />
+    </Suspense>
+  );
+}
+
+export default SongsPageWrapper;

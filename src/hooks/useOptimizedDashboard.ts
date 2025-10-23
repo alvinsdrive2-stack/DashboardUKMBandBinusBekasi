@@ -103,7 +103,7 @@ export function useOptimizedDashboard(params: DashboardParams = {}) {
       return data;
     },
     staleTime: noCache ? 0 : 2 * 60 * 1000, // No cache jika noCache=true
-    cacheTime: noCache ? 0 : 5 * 60 * 1000,  // No cache jika noCache=true
+    gcTime: noCache ? 0 : 5 * 60 * 1000,  // No cache jika noCache=true
     refetchInterval: autoRefresh ? refreshInterval : false,
     refetchOnWindowFocus: false, // Disable untuk mobile performance
     retry: (failureCount, error) => {
@@ -113,19 +113,19 @@ export function useOptimizedDashboard(params: DashboardParams = {}) {
       }
       return false;
     },
-    // Enable suspense untuk better loading states
-    suspense: false,
+    // Suspense tidak didukung di versi React Query ini
+
   });
 
   // Background refresh mutation
-  const refreshMutation = useMutation({
+  const refreshMutation = useMutation<void, Error, unknown, void>({
     mutationFn: async (forceRefresh = true) => {
-      const searchParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        includeStats: includeStats.toString(),
-        forceRefresh: forceRefresh.toString(),
-      });
+      const searchParams = Object.fromEntries([
+        ['page', page.toString()],
+        ['limit', limit.toString()],
+        ['includeStats', includeStats.toString()],
+        ['forceRefresh', 'true']
+      ]);
 
       const response = await fetch(`${DASHBOARD_API}?${searchParams}`);
 
@@ -188,7 +188,7 @@ export function useOptimizedDashboard(params: DashboardParams = {}) {
 
   // Auto prefetch next page saat data loading selesai
   useEffect(() => {
-    if (!isLoading && !isError && dashboardData?.events?.dashboard?.length >= limit) {
+    if (!isLoading && !isError && dashboardData?.events?.dashboard && dashboardData.events.dashboard.length >= limit) {
       prefetchNextPage();
     }
   }, [isLoading, isError, dashboardData, limit, prefetchNextPage]);
@@ -240,7 +240,7 @@ export function useEvents(type: 'dashboard' | 'member' | 'public', params: { pag
       return response.json();
     },
     staleTime: type === 'public' ? 5 * 60 * 1000 : 2 * 60 * 1000, // Public events bisa lebih lama
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }
@@ -259,7 +259,7 @@ export function useUserStats(userId: string, enabled = true) {
       return response.json();
     },
     staleTime: 5 * 60 * 1000, // 5 menit
-    cacheTime: 15 * 60 * 1000, // 15 menit
+    gcTime: 15 * 60 * 1000, // 15 menit
     refetchInterval: false, // Manual refresh untuk stats
     enabled: !!userId && enabled,
     refetchOnWindowFocus: false,
