@@ -39,8 +39,15 @@ model Event {
   location        String
   status          EventStatus      @default(DRAFT)
 
+  // Field untuk pengajuan publik
+  submittedBy     String?          // Kontak pengaju acara publik
+  isSubmittedByPublic Boolean?     @default(false) // Menandai apakah diajukan oleh publik
+
   // Relasi ke personel yang tampil
   personnel       EventPersonnel[]
+
+  // Relasi ke lagu-lagu dalam event
+  songs           EventSong[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -72,6 +79,29 @@ model EventPersonnel {
   // Jadi, biarkan `@unique([userId, eventId])` sebagai kunci utama untuk mencegah double-daftar.
 }
 
+model EventSong {
+  id        String   @id @default(cuid())
+  title     String
+  artist    String?
+  key       String?  // Nada dasar (contoh: C, Am, G#m)
+  duration  String?  // Durasi lagu (contoh: 3:45)
+  notes     String?  // Catatan tambahan tentang lagu
+  order     Int      // Urutan dalam setlist
+
+  // Foreign keys
+  eventId   String
+
+  // Relations
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Constraints
+  @@unique([eventId, order]) // Setiap order harus unik per event
+}
+
 // =======================
 // Enums
 // =======================
@@ -96,7 +126,9 @@ enum ApprovalStatus {
 }
 
 enum EventStatus {
-  DRAFT
-  PUBLISHED
-  FINISHED
+  SUBMITTED     // Status untuk acara yang diajukan publik, menunggu approval
+  DRAFT         // Status untuk acara yang sudah di-approve pengurus
+  PUBLISHED     // Status untuk acara yang siap ditampilkan ke anggota
+  FINISHED      // Status untuk acara yang sudah selesai
+  REJECTED      // Status untuk acara yang ditolak
 }
