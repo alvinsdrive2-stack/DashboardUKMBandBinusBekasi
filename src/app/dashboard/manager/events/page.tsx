@@ -56,11 +56,27 @@ import {
 import ManagerSidebar from '@/components/ManagerSidebar';
 import { EventWithPersonnel, EventStatus } from '@/types';
 
+// Types untuk slot configuration
+interface EventSlot {
+  id: string;
+  slotName: string;
+  slotType: 'VOCAL' | 'GUITAR' | 'BASS' | 'DRUMS' | 'KEYBOARD' | 'CUSTOM';
+  capacity: number;
+  required: boolean;
+  isActive: boolean;
+}
+
+interface EventWithSlots extends EventWithPersonnel {
+  slotConfigurable: boolean;
+  slotConfiguration: any;
+  availableSlots: EventSlot[];
+}
+
 export default function ManagerEventsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const [events, setEvents] = useState<EventWithPersonnel[]>([]);
+  const [events, setEvents] = useState<EventWithSlots[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -81,6 +97,12 @@ export default function ManagerEventsPage() {
     status: 'PUBLISHED' as EventStatus,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // State untuk slot management
+  const [slotConfigModal, setSlotConfigModal] = useState(false);
+  const [eventSlots, setEventSlots] = useState<any[]>([]);
+  const [slotConfigEnabled, setSlotConfigEnabled] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Theme colors
   const bgMain = '#ffffff'; // Putih
@@ -125,6 +147,76 @@ export default function ManagerEventsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEventSlots = async (eventId: string) => {
+    try {
+      setLoadingSlots(true);
+      const response = await fetch(`/api/events/${eventId}/slots`);
+      if (response.ok) {
+        const data = await response.json();
+        setEventSlots(data.data.slots || []);
+        setSlotConfigEnabled(data.data.slotConfigurable || false);
+      }
+    } catch (error) {
+      console.error('Error fetching event slots:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat konfigurasi slot',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const toggleSlotConfig = async (eventId: string, enable: boolean) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}/slots`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enableSlotConfig: enable,
+          slotConfiguration: enable ? [
+            { type: 'VOCAL', name: 'Vokalis Utama', count: 3, required: true },
+            { type: 'VOCAL', name: 'Vokalis Pendukung', count: 2, required: false },
+            { type: 'GUITAR', name: 'Gitar 1', count: 2, required: true },
+            { type: 'GUITAR', name: 'Gitar 2', count: 2, required: false },
+            { type: 'BASS', name: 'Basis', count: 1, required: true },
+            { type: 'DRUMS', name: 'Drummer', count: 1, required: true },
+            { type: 'KEYBOARD', name: 'Keyboardis/Pianis', count: 2, required: false }
+          ] : null
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSlotConfigEnabled(enable);
+        toast({
+          title: 'Success',
+          description: data.message,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+
+        // Refresh slots after update
+        fetchEventSlots(eventId);
+      }
+    } catch (error) {
+      console.error('Error toggling slot config:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengupdate konfigurasi slot',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -1186,6 +1278,33 @@ const downloadEventReport = async (event: EventWithPersonnel) => {
           <ModalCloseButton />
           <ModalBody pb="6">
             <VStack spacing="4" as="form" onSubmit={(e) => { e.preventDefault(); handleUpdateEvent(); }}>
+              {/* Slot Configuration Section */}
+              <Box mb="6" p="4" borderWidth="1px" borderColor={borderColor} borderRadius="lg">
+                <Heading size="sm" color={textPrimary} mb="3">⚙ Konfigurasi Slot</Heading>
+
+                <HStack spacing="4" align="center" mb="4">
+                  <Text fontSize="sm" color={textSecondary}>
+                    Aktifkan konfigurasi slot untuk event ini?
+                  </Text>
+                  <Button
+                    size="sm"
+                    colorScheme={slotConfigEnabled ? 'green' : 'gray'}
+                    onClick={() => toggleSlotConfig(selectedEvent?.id || '', !slotConfigEnabled)}
+                    isLoading={loadingSlots}
+                  >
+                    {slotConfigEnabled ? 'Slot Diaktifkan' : 'Slot Dinonaktifkan'}
+                  </Button>
+                </HStack>
+
+                {slotConfigEnabled && (
+                  <Alert status="info" borderRadius="md">
+                    <AlertIcon />
+                    <Text fontSize="sm" color={textPrimary}>
+                      <strong>Format Band Standar:</strong> 3 Vokalis, 1 Basis, 1 Drummer, 1 Keyboardis, 2 Gitaris
+                    </Text>
+                  </Alert>
+                )}
+              </Box>
               <FormControl isRequired>
                 <FormLabel htmlFor="edit-title" color={textPrimary}>Judul Event</FormLabel>
                 <Input

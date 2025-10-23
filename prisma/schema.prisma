@@ -47,8 +47,15 @@ model Event {
   // Relasi ke personel yang tampil
   personnel       EventPersonnel[]
 
+  // Field untuk slot kostumisasi
+  slotConfigurable Boolean @default(false) // Apakah slot bisa dikostumisasi
+  slotConfiguration Json?       // Konfigurasi slot (vokal, gitar, dll)
+
   // Relasi ke lagu-lagu dalam event
   songs           EventSong[]
+
+  // Relasi ke slot yang tersedia
+  availableSlots  EventSlot[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -61,10 +68,12 @@ model EventPersonnel {
 
   userId   String?          // Dibuat nullable untuk slot kosong/lowongan
   eventId  String
+  slotId   String?          // Relasi ke slot yang dipilih (jika ada)
 
   // Relasi
   user     User?            @relation(fields: [userId], references: [id]) // Relasi opsional
   event    Event            @relation(fields: [eventId], references: [id])
+  slot     EventSlot?        @relation(fields: [slotId], references: [id]) // Relasi ke slot
 
   // PENAMBAHAN PENTING: Unique Constraint Komposit
   // 1. Memastikan 1 user HANYA bisa mendaftar 1 role per event.
@@ -103,6 +112,27 @@ model EventSong {
   @@unique([eventId, order]) // Setiap order harus unik per event
 }
 
+model EventSlot {
+  id        String   @id @default(cuid())
+  eventId   String
+  slotName  String           // misal: "Vokalis Utama", "Gitar 1", "Drummer"
+  slotType  SlotType  @default(CUSTOM) // Tipe slot untuk kategorisasi
+  capacity  Int      @default(1) // Jumlah orang yang bisa mengisi slot ini
+  required  Boolean  @default(true) // Apakah slot wajib diisi
+  isActive  Boolean  @default(true) // Apakah slot aktif
+
+  // Relasi
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personnel EventPersonnel[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Unique constraint
+  @@unique([eventId, slotName])
+}
+
 // =======================
 // Enums
 // =======================
@@ -132,4 +162,13 @@ enum EventStatus {
   PUBLISHED     // Status untuk acara yang siap ditampilkan ke anggota
   FINISHED      // Status untuk acara yang sudah selesai
   REJECTED      // Status untuk acara yang ditolak
+}
+
+enum SlotType {
+  VOCAL         // Slot untuk vokalis
+  GUITAR        // Slot untuk gitaris
+  BASS          // Slot untuk basis
+  DRUMS         // Slot untuk drummer
+  KEYBOARD      // Slot untuk keyboardis/pianis
+  CUSTOM        // Slot kostum (bisa diisi apa saja)
 }

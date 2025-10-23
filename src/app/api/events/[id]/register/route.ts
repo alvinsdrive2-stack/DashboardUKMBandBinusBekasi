@@ -37,7 +37,7 @@ export async function POST(
     }
 
     // 2. Body and URL Parameter Extraction
-    const { personnelId } = await request.json();
+    const { personnelId, slotId } = await request.json();
 
     if (!personnelId) {
       return NextResponse.json(
@@ -83,6 +83,34 @@ export async function POST(
 
       if (personnel.userId !== null) {
         throw new Error('This slot is already taken');
+      }
+
+      // Validasi tambahan untuk slot selection
+      if (slotId) {
+        // Cek apakah slot tersedia dan aktif
+        const slot = await tx.eventSlot.findUnique({
+          where: {
+            id: slotId,
+            eventId: eventId,
+            isActive: true
+          }
+        });
+
+        if (!slot) {
+          throw new Error('Selected slot not available or inactive');
+        }
+
+        // Cek apakah slot sudah diisi oleh user lain
+        const slotTaken = await tx.eventPersonnel.findFirst({
+          where: {
+            slotId: slotId,
+            status: { in: ['APPROVED', 'PENDING'] }
+          }
+        });
+
+        if (slotTaken && slotTaken.userId !== userId) {
+          throw new Error('This slot is already taken by another member');
+        }
       }
 
       // Check if user is already registered in a different slot for this event
@@ -139,6 +167,7 @@ export async function POST(
       where: { id: personnelId },
       data: {
         userId: userId,
+        slotId: slotId || null, // Update slotId jika dipilih
         status: 'APPROVED' // Auto approve
       },
       include: {
