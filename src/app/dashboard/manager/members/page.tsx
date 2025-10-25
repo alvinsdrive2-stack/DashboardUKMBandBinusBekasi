@@ -40,7 +40,12 @@ import {
   StatLabel,
   StatNumber,
   Progress,
-  useColorModeValue, // WAJIB: Diimpor untuk penyesuaian warna light/dark mode
+  useColorModeValue,
+  Icon,// WAJIB: Diimpor untuk penyesuaian warna light/dark mode
+  Card,
+  CardBody,
+  Divider,
+  Stack,
 } from '@chakra-ui/react';
 import {
   UsersIcon,
@@ -48,15 +53,30 @@ import {
   FunnelIcon,
   MusicalNoteIcon,
   CalendarDaysIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  PhoneIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
+import { CalendarIcon, InfoOutlineIcon, AtSignIcon } from '@chakra-ui/icons';
+
 import ManagerSidebar from '@/components/ManagerSidebar';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerResponsiveModal from '@/components/ManagerResponsiveModal';
+import ManagerStatsCards from '@/components/ManagerStatsCards';
+import Footer from '@/components/Footer';
+import { ModalActions } from '@/components/ManagerResponsiveModal';
 import { useManagerMembers } from '@/hooks/useManagerData';
+import { useManagerStats } from '@/hooks/useManagerStats';
 
 // --- Antarmuka (Interface) tetap sama ---
 interface Member {
   id: string;
   name: string;
   email: string;
+  nim: string;
+  major: string;
+  phoneNumber: string;
   instruments: string[];
   organizationLvl: string;
   participations: {
@@ -92,31 +112,29 @@ export default function ManagerMembersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
-
-  // --- PERBAIKAN: Menggunakan useColorModeValue untuk penamaan warna yang valid ---
-  const accentColor = 'red.600'; // Warna aksen umum
+  const { stats: globalStats, loading: statsLoading } = useManagerStats();
   
   // Warna Utama
-  const bgMain = useColorModeValue('white', 'gray.800');
-  const textPrimary = useColorModeValue('gray.800', 'white');
-  const textSecondary = useColorModeValue('gray.500', 'gray.400');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const bgMain = '#ffffff';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
+  const borderColor = '#e5e7eb';
 
-  // Warna UI Tambahan (Mengganti string yang tidak valid)
-  const blueBg = useColorModeValue('blue.50', 'blue.900');
-  const blueIcon = useColorModeValue('blue.600', 'blue.400');
-  const greenBg = useColorModeValue('green.50', 'green.900');
-  const greenIcon = useColorModeValue('green.600', 'green.400');
-  const greenText = useColorModeValue('green.600', 'green.400');
-  const purpleBg = useColorModeValue('purple.50', 'purple.900');
-  const purpleIcon = useColorModeValue('purple.600', 'purple.400');
-  const purpleText = useColorModeValue('purple.600', 'purple.400');
-  const orangeBg = useColorModeValue('orange.50', 'orange.900'); // Hanya digunakan sebagai warna, bukan ikon/teks
-  const grayBg = useColorModeValue('gray.50', 'gray.700');
-  const grayBadgeBg = useColorModeValue('gray.100', 'gray.600');
-  const purpleBadgeBg = useColorModeValue('purple.100', 'purple.800');
-  const purpleBadgeText = useColorModeValue('purple.800', 'purple.200');
-
+  // Warna UI Tambahan
+  const blueBg = '#dbeafe';
+  const blueIcon = '#2563eb';
+  const greenBg = '#d1fae5';
+  const greenIcon = '#059669';
+  const greenText = '#059669';
+  const purpleBg = '#ede9fe';
+  const purpleIcon = '#7c3aed';
+  const purpleText = '#7c3aed';
+  const orangeBg = '#fed7aa'; // Hanya digunakan sebagai warna, bukan ikon/teks
+  const grayBg = '#f9fafb';
+  const grayBadgeBg = '#f3f4f6';
+  const purpleBadgeBg = '#f3e8ff';
+  const purpleBadgeText = '#581c87';
+const accentColor = '#dc2626';
   // --- PERBAIKAN: Tanda kurung () ditambahkan pada useState ---
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
@@ -164,18 +182,22 @@ export default function ManagerMembersPage() {
       const matchesSearch =
         member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.instruments.some(inst => inst.toLowerCase().includes(searchTerm.toLowerCase())); // PERBAIKAN: Tanda kurung () ditambahkan
+        member.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.major.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.instruments.some(inst => inst.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesLevel = !filterLevel || member.organizationLvl === filterLevel;
 
       const matchesStatus = !filterStatus ||
         (filterStatus === 'active' && member.stats.upcomingEvents > 0) ||
-        (filterStatus === 'inactive' && member.stats.upcomingEvents === 0); // PERBAIKAN: Tanda kurung ) ditambahkan
+        (filterStatus === 'inactive' && member.stats.upcomingEvents === 0);
 
       return matchesSearch && matchesLevel && matchesStatus;
-    }); // PERBAIKAN: Tanda kurung ) ditambahkan
+    });
   }, [members, searchTerm, filterLevel, filterStatus]);
 
+  
   const openMemberDetail = (member: Member) => {
     setSelectedMember(member); // PERBAIKAN: Tanda kurung ) ditambahkan
     setIsDetailOpen(true); // PERBAIKAN: Tanda kurung ) ditambahkan
@@ -214,7 +236,8 @@ export default function ManagerMembersPage() {
     return (
       <Box minH="100vh" bg={bgMain}>
         <ManagerSidebar activeRoute="members" />
-        <Box flex="1" ml={{ base: 0, md: '280px' }} p="8">
+        <ManagerHeader />
+        <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 8 }}>
           <Flex justify="center" align="center" minH="60vh">
             <VStack spacing="4">
               <Spinner size="xl" color={accentColor} />
@@ -233,8 +256,9 @@ export default function ManagerMembersPage() {
   return (
     <Box minH="100vh" bg={bgMain}>
       <ManagerSidebar activeRoute="members" />
+      <ManagerHeader />
 
-      <Box flex="1" ml={{ base: 0, md: '280px' }} p="8">
+      <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 8 }}>
         <VStack spacing="6" align="stretch">
           {/* Header */}
           <Flex justify="space-between" align="center">
@@ -256,152 +280,102 @@ export default function ManagerMembersPage() {
             </Box>
           </Alert>
 
-          {/* Stats Cards */}
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing="6">
-            <Box
-              bg={bgMain}
-              p="6"
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color='black'
-            >
-              <VStack align="start" spacing="3">
-                <Box p="3" bg={blueBg} borderRadius="xl">
-                  <UsersIcon width={24} height={24} color={blueIcon} />
-                </Box>
-                <Box>
-                  <Text fontSize="sm" color={textSecondary} fontWeight="medium" mb="1">
-                    Total Anggota
-                  </Text>
-                  <Text fontSize="3xl" fontWeight="bold" color={textPrimary}>
-                    {stats.total || 0}
-                  </Text>
-                </Box>
-              </VStack>
-            </Box>
-
-            <Box
-              bg={bgMain}
-              p="6"
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color='black'
-            >
-              <VStack align="start" spacing="3">
-                <Box p="3" bg={greenBg} borderRadius="xl">
-                  <CalendarDaysIcon width={24} height={24} color={greenIcon} />
-                </Box>
-                <Box>
-                  <Text fontSize="sm" color={textSecondary} fontWeight="medium" mb="1">
-                    Anggota Aktif
-                  </Text>
-                  <Text fontSize="3xl" fontWeight="bold" color={greenText}>
-                    {stats.active || 0}
-                  </Text>
-                  <Progress
-                    value={stats.total > 0 ? (stats.active / stats.total) * 100 : 0}
-                    size="sm"
-                    colorScheme="green"
-                    mt="2"
-                    borderRadius="full"
-                  />
-                </Box>
-              </VStack>
-            </Box>
-
-            <Box
-              bg={bgMain}
-              p="6"
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-4px)' }}
-              color='black'
-            >
-              <VStack align="start" spacing="3">
-                <Box p="3" bg={purpleBg} borderRadius="xl">
-                  <MusicalNoteIcon width={24} height={24} color={purpleIcon} />
-                </Box>
-                <Box>
-                  <Text fontSize="sm" color={textSecondary} fontWeight="medium" mb="1">
-                    Total Partisipasi
-                  </Text>
-                  <Text fontSize="3xl" fontWeight="bold" color={purpleText}>
-                    {stats.totalParticipations || 0}
-                  </Text>
-                </Box>
-              </VStack>
-            </Box>
-          </SimpleGrid>
+                  {/* Stats Cards */}
+          <ManagerStatsCards
+            totalEvents={globalStats.totalEvents}
+            totalMembers={globalStats.totalMembers}
+            upcomingEvents={globalStats.upcomingEvents}
+            finishedEvents={globalStats.finishedEvents}
+            activeMembers={globalStats.activeMembers}
+            isLoading={statsLoading}
+          />
 
           {/* Filters */}
-          <HStack spacing="4" flexWrap="wrap">
-            <InputGroup maxW="300px">
-              <InputLeftElement pointerEvents="none">
-                <MagnifyingGlassIcon width={16} height={16} color={textSecondary} />
-              </InputLeftElement>
-              <Input
-                placeholder="Cari nama, email, atau instrument..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                borderRadius="xl"
-                color={textPrimary}
-              />
-            </InputGroup>
+          <Stack
+  direction={{ base: 'column', md: 'row' }}
+  spacing={4}
+  align={{ base: 'stretch', md: 'center' }}
+  w="full"
+  flexWrap="wrap"
+>
+  {/* Search Input */}
+  <InputGroup flex="1" w={{ base: 'full', md: '300px' }}>
+    <InputLeftElement pointerEvents="none">
+      <MagnifyingGlassIcon width={16} height={16} color={textSecondary} />
+    </InputLeftElement>
+    <Input
+      placeholder="Cari nama, email, NIM, jurusan, telepon, atau instrument..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      borderRadius="xl"
+      color={textPrimary}
+    />
+  </InputGroup>
 
-            <Select
-              placeholder="Filter Level"
-              value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value)}
-              maxW="200px"
-              borderRadius="xl"
-              color={filterLevel ? textPrimary : textSecondary}
-            >
-              <option value="COMMISSIONER">Komisaris</option>
-              <option value="PENGURUS">Pengurus</option>
-              <option value="SPECTA">Specta</option>
-              <option value="TALENT">Talent</option>
-            </Select>
+  {/* Filter Level */}
+  <Select
+    placeholder="Filter Level"
+    value={filterLevel}
+    onChange={(e) => setFilterLevel(e.target.value)}
+    borderRadius="xl"
+    color={filterLevel ? textPrimary : textSecondary}
+    w={{ base: 'full', md: '200px' }}
+  >
+    <option value="COMMISSIONER">Komisaris</option>
+    <option value="PENGURUS">Pengurus</option>
+    <option value="SPECTA">Specta</option>
+    <option value="TALENT">Talent</option>
+  </Select>
 
-            <Select
-              placeholder="Filter Status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              maxW="200px"
-              borderRadius="xl"
-              color={filterStatus ? textPrimary : textSecondary}
-            >
-              <option value="active">Aktif (Ada event)</option>
-              <option value="inactive">Tidak Aktif</option>
-            </Select>
+  {/* Filter Status */}
+  <Select
+    placeholder="Filter Status"
+    value={filterStatus}
+    onChange={(e) => setFilterStatus(e.target.value)}
+    borderRadius="xl"
+    color={filterStatus ? textPrimary : textSecondary}
+    w={{ base: 'full', md: '200px' }}
+  >
+    <option value="active">Aktif (Ada event)</option>
+    <option value="inactive">Tidak Aktif</option>
+  </Select>
 
-            {(searchTerm || filterLevel || filterStatus) && (
-              <Button
-                variant="outline"
-                size="sm"
-                borderRadius="xl"
-                onClick={() => {
-                  setSearchTerm('');
-                  setFilterLevel('');
-                  setFilterStatus('');
-                }}
-              >
-                Reset Filter
-              </Button>
-            )}
-          </HStack>
+  {/* Reset Button */}
+  {(searchTerm || filterLevel || filterStatus) && (
+    <Button
+      variant="outline"
+      size="sm"
+      borderRadius="xl"
+      onClick={() => {
+        setSearchTerm('');
+        setFilterLevel('');
+        setFilterStatus('');
+      }}
+      w={{ base: 'full', md: 'auto' }}
+    >
+      Reset Filter
+    </Button>
+  )}
+</Stack>
 
-          {/* Members Table */}
-          {filteredMembers.length === 0 ? (
+                {/* Members Cards */}
+          {loading ? (
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} borderRadius="2xl" overflow="hidden">
+                  <CardBody p={6}>
+                    <VStack spacing={4} align="center">
+                      <Box w={16} h={16} bg="#f3f4f6" borderRadius="full" />
+                      <Box w="60%" h="16px" bg="#f3f4f6" borderRadius="full" />
+                      <Box w="40%" h="12px" bg="#f3f4f6" borderRadius="full" />
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+          ) : filteredMembers.length === 0 ? (
             <Box
-              bg={grayBg}
+              bg={useColorModeValue('gray.50', 'gray.800')}
               borderRadius="2xl"
               p="12"
               textAlign="center"
@@ -420,249 +394,373 @@ export default function ManagerMembersPage() {
               </VStack>
             </Box>
           ) : (
-            <TableContainer bg={bgMain} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
-              <Table variant="simple">
-                <Thead bg={grayBg}>
-                  <Tr>
-                    <Th color={textPrimary} fontWeight="semibold">Anggota</Th>
-                    <Th color={textPrimary} fontWeight="semibold">Level</Th>
-                    <Th color={textPrimary} fontWeight="semibold">Instrument</Th>
-                    <Th color={textPrimary} fontWeight="semibold">Partisipasi</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {filteredMembers.map((member) => (
-                    <Tr
-                      key={member.id}
-                      _hover={{ bg: grayBg, cursor: 'pointer' }}
-                      transition="all 0.2s"
-                      onClick={() => openMemberDetail(member)}
-                    >
-                      <Td>
-                        <HStack spacing="3">
-                          <Avatar
-                            size="sm"
-                            name={member.name}
-                            bg={accentColor}
-                          />
-                          <Box>
-                            <Text fontWeight="semibold" color={textPrimary}>
-                              {member.name}
-                            </Text>
-                            <Text fontSize="xs" color={textSecondary}>
-                              {member.email}
-                            </Text>
-                          </Box>
-                        </HStack>
-                      </Td>
-                      <Td>
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+              {filteredMembers.map((member) => (
+                <Card
+                  key={member.id}
+                  borderRadius="2xl"
+                  overflow="hidden"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  cursor="pointer"
+                  transition="all 0.3s ease"
+                  _hover={{
+                    transform: { base: 'translateY(-2px)', md: 'translateY(-4px)' },
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    borderColor: accentColor
+                  }}
+                  onClick={() => openMemberDetail(member)}
+                >
+                  <CardBody p={6}>
+                    <VStack spacing={4} align="center">
+                      {/* Avatar */}
+                      <Box
+                        w={20}
+                        h={20}
+                        bg="linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)"
+                        borderRadius="full"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        position="relative"
+                      >
+                        <Text fontSize="2xl" fontWeight="bold" color="white">
+                          {member.name.charAt(0).toUpperCase()}
+                        </Text>
+                        <Badge
+                          position="absolute"
+                          bottom="-2px"
+                          right="-2px"
+                          colorScheme={getLevelColor(member.organizationLvl)}
+                          borderRadius="full"
+                          boxSize="6"
+                          borderWidth="2px"
+                          borderColor="white"
+                        />
+                      </Box>
+
+                      {/* Name and Level */}
+                      <VStack spacing={2} align="center" textAlign="center">
+                        <Text fontSize="lg" fontWeight="600" color={textPrimary} noOfLines={1}>
+                          {member.name}
+                        </Text>
                         <Badge
                           colorScheme={getLevelColor(member.organizationLvl)}
-                          fontSize="xs"
-                          px="2"
-                          py="1"
+                          fontSize="sm"
+                          px={3}
+                          py={1}
                           borderRadius="md"
                         >
                           {getLevelText(member.organizationLvl)}
                         </Badge>
-                      </Td>
-                      <Td>
-                        <VStack align="start" spacing="1" maxW="200px">
-                          {member.instruments.slice(0, 2).map((instrument, idx) => (
+                      </VStack>
+
+                      {/* Contact Info */}
+                      <VStack spacing={2} align="center" w="full">
+                        <HStack spacing={2} color={textSecondary} fontSize="sm">
+                          <Icon as={EnvelopeIcon} w={4} h={4} />
+                          <Text noOfLines={1}>{member.email}</Text>
+                        </HStack>
+                        {member.nim && (
+                          <HStack spacing={2} color={textSecondary} fontSize="sm">
+                            <Icon as={AcademicCapIcon} w={4} h={4} />
+                            <Text>{member.nim}</Text>
+                          </HStack>
+                        )}
+                        {member.phoneNumber && (
+                          <HStack spacing={2} color={textSecondary} fontSize="sm">
+                            <Icon as={PhoneIcon} w={4} h={4} />
+                            <Text>{member.phoneNumber}</Text>
+                          </HStack>
+                        )}
+                      </VStack>
+
+                      {/* Stats */}
+                      <HStack spacing={4} justify="center" w="full">
+                        <VStack spacing={1}>
+                          <Text fontSize="lg" fontWeight="bold" color={accentColor}>
+                            {member.stats?.upcomingEvents || 0}
+                          </Text>
+                          <Text fontSize="xs" color={textSecondary}>Event</Text>
+                        </VStack>
+                        <Divider orientation="vertical" h="8" />
+                        <VStack spacing={1}>
+                          <Text fontSize="lg" fontWeight="bold" color="green.500">
+                            {member.stats?.totalParticipations > 0
+                              ? `${Math.round((member.stats.approvedParticipations / member.stats.totalParticipations) * 100)}%`
+                              : '0%'
+                            }
+                          </Text>
+                          <Text fontSize="xs" color={textSecondary}>Partisipasi</Text>
+                        </VStack>
+                      </HStack>
+
+                      {/* Instruments */}
+                      {member.instruments && member.instruments.length > 0 && (
+                        <HStack spacing={2} flexWrap="wrap" justify="center" maxW="full">
+                          {member.instruments.slice(0, 3).map((instrument, index) => (
                             <Badge
-                              key={idx}
-                              bg={grayBadgeBg}
-                              color={textSecondary}
+                              key={index}
+                              bg={useColorModeValue('blue.100', 'blue.900')}
+                              color={useColorModeValue('blue.800', 'blue.200')}
                               fontSize="xs"
-                              px="2"
-                              py="1"
+                              px={2}
+                              py={1}
                               borderRadius="md"
                             >
                               {instrument}
                             </Badge>
                           ))}
-                          {member.instruments.length > 2 && (
-                            <Text fontSize="xs" color={textSecondary}>
-                              +{member.instruments.length - 2} lagi
-                            </Text>
-                          )}
-                        </VStack>
-                      </Td>
-                      <Td>
-                        <VStack align="start" spacing="1">
-                          <HStack spacing="2">
-                            <Badge colorScheme="green" fontSize="xs" px="2" py="1">
-                              ✓ {member.stats.approvedParticipations}
-                            </Badge>
-                            <Badge colorScheme="yellow" fontSize="xs" px="2" py="1">
-                              ⏳ {member.stats.pendingParticipations}
-                            </Badge>
-                          </HStack>
-                          <Text fontSize="xs" color={textSecondary}>
-                            Total: {member.stats.totalParticipations}
-                          </Text>
-                        </VStack>
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          )}
-        </VStack>
-      </Box>
-
-      {/* Member Detail Modal */}
-      <Modal
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        size="2xl"
-        isCentered
-      >
-        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl" overflow="hidden" bg={bgMain}>
-          <ModalHeader
-            bg={grayBg}
-            borderBottomWidth="1px"
-            borderColor={borderColor}
-          >
-            <HStack spacing="3">
-              <Avatar
-                size="md"
-                name={selectedMember?.name}
-                bg={accentColor}
-              />
-              <Box>
-                <Text fontSize="xl" fontWeight="bold" color={textPrimary}>
-                  {selectedMember?.name}
-                </Text>
-                <HStack spacing="2">
-                  <Badge
-                    colorScheme={selectedMember ? getLevelColor(selectedMember.organizationLvl) : 'gray'}
-                    fontSize="xs"
-                  >
-                    {selectedMember ? getLevelText(selectedMember.organizationLvl) : ''}
-                  </Badge>
-                  <Text fontSize="sm" color={textSecondary}>
-                    {selectedMember?.email}
-                  </Text>
-                </HStack>
-              </Box>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody p="6">
-            {selectedMember && (
-              <VStack spacing="6" align="stretch">
-                {/* Instruments */}
-                <Box>
-                  <Text fontWeight="semibold" color={textPrimary} mb="3">Instrument</Text>
-                  <HStack spacing="2" flexWrap="wrap">
-                    {selectedMember.instruments.map((instrument, idx) => (
-                      <Badge
-                        key={idx}
-                        bg={purpleBadgeBg}
-                        color={purpleBadgeText}
-                        fontSize="sm"
-                        px="3"
-                        py="2"
-                        borderRadius="md"
-                      >
-                        🎵 {instrument}
-                      </Badge>
-                    ))}
-                  </HStack>
-                </Box>
-
-                {/* Stats */}
-                <SimpleGrid columns={{ base: 2, md: 4 }} spacing="4">
-                  <Stat>
-                    <StatLabel color={textSecondary} fontSize="sm">Total Partisipasi</StatLabel>
-                    <StatNumber color={textPrimary} fontSize="2xl">
-                      {selectedMember.stats.totalParticipations}
-                    </StatNumber>
-                  </Stat>
-                  <Stat>
-                    <StatLabel color={textSecondary} fontSize="sm">Disetujui</StatLabel>
-                    <StatNumber color="green.500" fontSize="2xl">
-                      {selectedMember.stats.approvedParticipations}
-                    </StatNumber>
-                  </Stat>
-                  <Stat>
-                    <StatLabel color={textSecondary} fontSize="sm">Pending</StatLabel>
-                    <StatNumber color="yellow.500" fontSize="2xl">
-                      {selectedMember.stats.pendingParticipations}
-                    </StatNumber>
-                  </Stat>
-                  <Stat>
-                    <StatLabel color={textSecondary} fontSize="sm">Event Aktif</StatLabel>
-                    <StatNumber color={accentColor} fontSize="2xl">
-                      {selectedMember.stats.upcomingEvents}
-                    </StatNumber>
-                  </Stat>
-                </SimpleGrid>
-
-                {/* Recent Participations */}
-                <Box>
-                  <Text fontWeight="semibold" color={textPrimary} mb="3">Partisipasi Terkini</Text>
-                  <VStack spacing="2" align="stretch" maxH="300px" overflowY="auto" p="1">
-                    {selectedMember.participations.length === 0 ? (
-                      <Text color={textSecondary} textAlign="center" py="4">
-                        Belum ada partisipasi
-                      </Text>
-                    ) : (
-                      selectedMember.participations.map((participation) => (
-                        <Box
-                          key={participation.id}
-                          p="3"
-                          bg={grayBg}
-                          borderRadius="lg"
-                          borderWidth="1px"
-                          borderColor={borderColor}
-                        >
-                          <Flex justify="space-between" align="center">
-                            <VStack align="start" spacing="1">
-                              <Text fontWeight="medium" color={textPrimary}>
-                                {participation.event.title}
-                              </Text>
-                              <HStack spacing="3" fontSize="xs" color={textSecondary} divider={<Text>|</Text>}>
-                                <Text>📅 {new Date(participation.event.date).toLocaleDateString('id-ID')}</Text>
-                                <Text>📍 {participation.event.location}</Text>
-                                <Text>🎭 {participation.role}</Text>
-                              </HStack>
-                            </VStack>
+                          {member.instruments.length > 3 && (
                             <Badge
-                              colorScheme={getStatusColor(participation.status)}
+                              bg={useColorModeValue('gray.100', 'gray.900')}
+                              color={useColorModeValue('gray.800', 'gray.200')}
                               fontSize="xs"
-                              px="2"
-                              py="1"
+                              px={2}
+                              py={1}
                               borderRadius="md"
                             >
-                              {participation.status}
+                              +{member.instruments.length - 3}
                             </Badge>
-                          </Flex>
-                        </Box>
-                      ))
-                    )}
-                  </VStack>
-                </Box>
+                          )}
+                        </HStack>
+                      )}
+
+                      {/* Click hint */}
+                      <Text fontSize="xs" color={textSecondary} textAlign="center">
+                        Klik untuk detail →
+                      </Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+          )}
+        </VStack>
+        <Footer />
+      </Box>
+
+          {/* Member Detail Modal */}
+      <ManagerResponsiveModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title={selectedMember?.name}
+        subtitle={selectedMember?.email}
+        size="xl"
+      >
+        {selectedMember && (
+          <VStack spacing={6} align="stretch">
+            {/* Profile Header */}
+            <HStack spacing={4} p={4} bg="#f9fafb" borderRadius="lg">
+              <Avatar
+                size="lg"
+                name={selectedMember.name}
+                bg={accentColor}
+              />
+              <VStack align="start" spacing={1} flex={1}>
+                <Text fontSize="lg" fontWeight="600" color={textPrimary}>
+                  {selectedMember.name}
+                </Text>
+                <Badge
+                  colorScheme={getLevelColor(selectedMember.organizationLvl)}
+                  fontSize="sm"
+                  px={3}
+                  py={1}
+                  borderRadius="md"
+                >
+                  {getLevelText(selectedMember.organizationLvl)}
+                </Badge>
+                <Text fontSize="sm" color={textSecondary}>
+                  {selectedMember.email}
+                </Text>
               </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter
-            borderTopWidth="1px"
-            borderColor={borderColor}
-            p="6"
-          >
-            <Button
-              variant="ghost"
-              onClick={() => setIsDetailOpen(false)}
-            >
-              Tutup
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Box>
-  );
-}
+            </HStack>
+
+            {/* Contact Information */}
+            <Box>
+              <Text fontSize="md" fontWeight="600" color={textPrimary} mb={3}>
+                Informasi Kontak
+              </Text>
+              <VStack align="start" spacing={3} bg="#f9fafb" p={4} borderRadius="lg">
+                <HStack spacing={3}>
+                  <AcademicCapIcon width={16} height={16} color={accentColor} />
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="xs" color={textSecondary} fontWeight="500">NIM</Text>
+                    <Text fontSize="sm" color={textPrimary}>{selectedMember.nim}</Text>
+                  </VStack>
+                </HStack>
+
+                <HStack spacing={3}>
+                  <BuildingOfficeIcon width={16} height={16} color={accentColor} />
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="xs" color={textSecondary} fontWeight="500">Jurusan</Text>
+                    <Text fontSize="sm" color={textPrimary}>{selectedMember.major}</Text>
+                  </VStack>
+                </HStack>
+
+                <HStack spacing={3}>
+                  <PhoneIcon width={16} height={16} color={accentColor} />
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="xs" color={textSecondary} fontWeight="500">Telepon</Text>
+                    <Text fontSize="sm" color={textPrimary}>{selectedMember.phoneNumber}</Text>
+                  </VStack>
+                </HStack>
+
+                <HStack spacing={3}>
+                  <UsersIcon width={16} height={16} color={accentColor} />
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="xs" color={textSecondary} fontWeight="500">Email</Text>
+                    <Text fontSize="sm" color={textPrimary}>{selectedMember.email}</Text>
+                  </VStack>
+                </HStack>
+              </VStack>
+            </Box>
+
+            {/* Instruments */}
+            <Box>
+              <Text fontSize="md" fontWeight="600" color={textPrimary} mb={3}>
+                Instrumen
+              </Text>
+              <HStack spacing={2} flexWrap="wrap" bg="#f9fafb" p={4} borderRadius="lg">
+                {selectedMember.instruments.map((instrument, idx) => (
+                  <Badge
+                    key={idx}
+                    colorScheme="orange"
+                    fontSize="sm"
+                    px={3}
+                    py={2}
+                    borderRadius="md"
+                  >
+                    {instrument}
+                  </Badge>
+                ))}
+              </HStack>
+            </Box>
+
+            {/* Statistics */}
+            <Box>
+              <Text fontSize="md" fontWeight="600" color={textPrimary} mb={3}>
+                Statistik Partisipasi
+              </Text>
+              <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} bg="#f9fafb" p={4} borderRadius="lg">
+                <VStack spacing={1}>
+                  <Text fontSize="xs" color={textSecondary} fontWeight="500">
+                    Total Partisipasi
+                  </Text>
+                  <Text fontSize="2xl" fontWeight="bold" color={textPrimary}>
+                    {selectedMember.stats.totalParticipations}
+                  </Text>
+                </VStack>
+                <VStack spacing={1}>
+                  <Text fontSize="xs" color={textSecondary} fontWeight="500">
+                    Disetujui
+                  </Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="green.500">
+                    {selectedMember.stats.approvedParticipations}
+                  </Text>
+                </VStack>
+                <VStack spacing={1}>
+                  <Text fontSize="xs" color={textSecondary} fontWeight="500">
+                    Pending
+                  </Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="yellow.500">
+                    {selectedMember.stats.pendingParticipations}
+                  </Text>
+                </VStack>
+                <VStack spacing={1}>
+                  <Text fontSize="xs" color={textSecondary} fontWeight="500">
+                    Event Aktif
+                  </Text>
+                  <Text fontSize="2xl" fontWeight="bold" color={accentColor}>
+                    {selectedMember.stats.upcomingEvents}
+                  </Text>
+                </VStack>
+              </SimpleGrid>
+            </Box>
+
+            {/* Recent Participations */}
+            <Box>
+              <Text fontSize="md" fontWeight="600" color={textPrimary} mb={3}>
+                Partisipasi Terkini
+              </Text>
+
+              <VStack
+                spacing={3}
+                align="stretch"
+                maxH="320px"
+                overflowY="auto"
+                bg="#f9fafb"
+                p={4}
+                borderRadius="lg"
+              >
+                {selectedMember.participations.length === 0 ? (
+                  <Text color={textSecondary} textAlign="center" py={4}>
+                    Belum ada partisipasi
+                  </Text>
+                ) : (
+                  selectedMember.participations.map((p) => (
+                    <Box
+                      key={p.id}
+                      p={4}
+                      bg="white"
+                      borderRadius="lg"
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      _hover={{ shadow: "md", transform: "translateY(-2px)" }}
+                      transition="all 0.2s ease"
+                    >
+                      <Flex justify="space-between" align="center" gap={4}>
+                        <VStack align="start" spacing={1}>
+                          <Text
+                            fontWeight="600"
+                            color={textPrimary}
+                            fontSize="sm"
+                            noOfLines={1}
+                          >
+                            {p.event.title}
+                          </Text>
+
+                          <HStack spacing={4} fontSize="xs" color={textSecondary}>
+                            <HStack spacing={1.5}>
+                              <CalendarIcon boxSize={3.5} color="red.500" />
+                              <Text>{new Date(p.event.date).toLocaleDateString("id-ID")}</Text>
+                            </HStack>
+
+                            <HStack spacing={1.5}>
+                              <InfoOutlineIcon boxSize={3.5} color="red.500" />
+                              <Text noOfLines={1}>{p.event.location}</Text>
+                            </HStack>
+
+                            <HStack spacing={1.5}>
+                              <AtSignIcon boxSize={3.5} color="red.500" />
+                              <Text>{p.role}</Text>
+                            </HStack>
+                          </HStack>
+                        </VStack>
+
+                        <Badge
+                          colorScheme={getStatusColor(p.status)}
+                          fontSize="xs"
+                          px={3}
+                          py={1}
+                          borderRadius="md"
+                          textTransform="capitalize"
+                        >
+                          {p.status.toLowerCase()}
+                        </Badge>
+                      </Flex>
+                    </Box>
+                  ))
+                )}
+              </VStack>
+            </Box>
+
+            <ModalActions
+              onCancel={() => setIsDetailOpen(false)}
+              onConfirm={() => {}}
+              cancelText="Tutup"
+            />
+          </VStack>
+        )}
+      </ManagerResponsiveModal>
+    </Box>)}

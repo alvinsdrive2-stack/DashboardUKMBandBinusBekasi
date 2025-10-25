@@ -20,45 +20,35 @@ import {
   CardBody,
   CardHeader,
   HStack,
-  Badge,
   SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
   FormControl,
   FormLabel,
   Input,
   Textarea,
   Divider,
-  Avatar,
 } from '@chakra-ui/react';
 import {
   CalendarDaysIcon,
-  ChartBarIcon,
   UsersIcon,
   MusicalNoteIcon,
   ClipboardDocumentIcon,
-  DocumentIcon,
-  MegaphoneIcon,
   FlagIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { EventWithPersonnel, EventStatus } from '@/types';
 import ManagerSidebar from '@/components/ManagerSidebar';
+import ManagerHeader from '@/components/ManagerHeader';
 import OptimizedEventCalendar from '@/components/OptimizedEventCalendar';
-import StatsCards from '@/components/StatsCards';
+import ManagerStatsCards from '@/components/ManagerStatsCards';
+import ManagerResponsiveModal, { ModalActions, QuickActions } from '@/components/ManagerResponsiveModal';
+import { useManagerStats } from '@/hooks/useManagerStats';
+import Footer from '@/components/Footer';
 
 export default function ManagerDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
+  const { stats: globalStats, loading: statsLoading } = useManagerStats();
   const { TransitionOverlay } = usePageTransition();
   const [events, setEvents] = useState<EventWithPersonnel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +158,13 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleAddEventSubmit = () => {
+    const form = document.querySelector('form');
+    if (form) {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    }
+  };
+
   const handleEventClick = (event: EventWithPersonnel) => {
     setSelectedEvent(event);
     setIsEventDetailOpen(true);
@@ -212,6 +209,8 @@ export default function ManagerDashboard() {
     e.status === 'PUBLISHED' && new Date(e.date) > new Date()
   ).length;
 
+  const pendingEvents = events.filter((e: any) => e.status === 'SUBMITTED').length;
+
   const totalParticipations = events
     .flatMap((e: any) => e.personnel.filter((p: any) => p.user))
     .length;
@@ -244,9 +243,10 @@ export default function ManagerDashboard() {
   return (
     <Box minH="100vh" bg={bgMain}>
       <ManagerSidebar activeRoute="dashboard" />
+      <ManagerHeader />
       <TransitionOverlay />
 
-      <Box flex="1" ml={{ base: 0, md: '280px' }} p="8">
+      <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 6, lg: 8 }}>
         {loading && (
           <Box
             position="fixed"
@@ -261,43 +261,69 @@ export default function ManagerDashboard() {
             justifyContent="center"
             alignItems="center"
             flexDirection="column"
-            gap="4"
+            gap={{ base: 3, md: 4 }}
+            p={{ base: 4, md: 0 }}
           >
-            <Spinner size="xl" color={accentColor} />
-            <Text color={textSecondary}>Memuat data...</Text>
+            <Spinner
+              size={{ base: 'lg', md: 'xl' }}
+              color={accentColor}
+              thickness="4px"
+            />
+            <VStack spacing="1" align="center">
+              <Text
+                fontSize={{ base: 'md', md: 'lg' }}
+                color={textSecondary}
+                fontWeight="500"
+              >
+                Memuat data...
+              </Text>
+              <Text
+                fontSize={{ base: 'xs', md: 'sm' }}
+                color="gray.500"
+                textAlign="center"
+              >
+                Mohon tunggu sebentar
+              </Text>
+            </VStack>
           </Box>
         )}
 
-        <VStack spacing="6" align="stretch">
-          <Flex justify="space-between" align="center">
-            <Box>
-              <Heading size="lg" color={textPrimary}>Dashboard Pengurus</Heading>
-              <Text color={textSecondary}>
+        <VStack spacing={{ base: 4, md: 6, lg: 8 }} align="stretch">
+          <Flex
+            justify="space-between"
+            align="center"
+            direction={{ base: 'column', md: 'row' }}
+            gap={{ base: 4, md: 0 }}
+          >
+            <Box textAlign={{ base: 'center', md: 'left' }}>
+              <Heading
+                size={{ base: 'md', md: 'lg' }}
+                color={textPrimary}
+                mb={2}
+              >
+                Dashboard Pengurus
+              </Heading>
+              <Text
+                fontSize={{ base: 'sm', md: 'md' }}
+                color={textSecondary}
+              >
                 Selamat datang, {session.user.name}! Kelola acara dan monitor anggota UKM Band.
               </Text>
             </Box>
             <HStack spacing="3">
               <Button
+                as="a"
+                href="/dashboard/manager/create-event"
                 colorScheme="red"
-                size="lg"
+                size={{ base: 'md', md: 'lg' }}
                 borderRadius="xl"
                 fontWeight="semibold"
-                px="8"
-                onClick={() => setIsAddEventOpen(true)}
+                px={{ base: 6, md: 8 }}
+                minH="44px"
                 _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
                 transition="all 0.2s"
               >
                 + Tambah Acara
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                borderRadius="xl"
-                fontWeight="semibold"
-                onClick={fetchEvents}
-                _hover={{ bg: 'gray.50' }}
-              >
-                Refresh
               </Button>
             </HStack>
           </Flex>
@@ -312,147 +338,22 @@ export default function ManagerDashboard() {
             </Box>
           </Alert>
 
-          {/* Manager Stats Overview - Compact */}
-          <SimpleGrid columns={{ base: 2, lg: 4 }} spacing="4">
-            <Card
-              bg="white"
-              shadow="sm"
-              borderRadius="xl"
-              borderWidth="1px"
-              borderColor="gray.100"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-            >
-              <CardBody p="4">
-                <HStack spacing="3" align="center">
-                  <Box
-                    p="2"
-                    bg="gray.50"
-                    borderRadius="lg"
-                    color="gray.600"
-                  >
-                    <DocumentIcon width={20} height={20} />
-                  </Box>
-                  <VStack align="start" spacing="0" flex="1">
-                    <Text fontSize="xs" color="gray.600" fontWeight="500">
-                      Total Acara
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={textPrimary}>
-                      {events.length}
-                    </Text>
-                  </VStack>
-                </HStack>
-              </CardBody>
-            </Card>
+          {/* Manager Stats Overview - Using New Responsive Component */}
+          <ManagerStatsCards
+            totalEvents={globalStats.totalEvents}
+            totalMembers={globalStats.totalMembers}
+            upcomingEvents={globalStats.upcomingEvents}
+            finishedEvents={globalStats.finishedEvents}
+            activeMembers={globalStats.activeMembers}
+            isLoading={statsLoading}
+          />
 
-            <Card
-              bg="white"
-              shadow="sm"
-              borderRadius="xl"
-              borderWidth="1px"
-              borderColor="gray.100"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-            >
-              <CardBody p="4">
-                <HStack spacing="3" align="center">
-                  <Box
-                    p="2"
-                    bg={accentBg}
-                    borderRadius="lg"
-                    color={accentColor}
-                  >
-                    <MegaphoneIcon width={20} height={20} />
-                  </Box>
-                  <VStack align="start" spacing="0" flex="1">
-                    <Text fontSize="xs" color="gray.600" fontWeight="500">
-                      Dipublikasikan
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={accentColor}>
-                      {publishedEvents}
-                    </Text>
-                  </VStack>
-                </HStack>
-              </CardBody>
-            </Card>
-
-            <Card
-              bg="white"
-              shadow="sm"
-              borderRadius="xl"
-              borderWidth="1px"
-              borderColor="gray.100"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-            >
-              <CardBody p="4">
-                <HStack spacing="3" align="center">
-                  <Box
-                    p="2"
-                    bg="#f0fdf4"
-                    borderRadius="lg"
-                    color="#16a34a"
-                  >
-                    <FlagIcon width={20} height={20} />
-                  </Box>
-                  <VStack align="start" spacing="0" flex="1">
-                    <Text fontSize="xs" color="gray.600" fontWeight="500">
-                      Event Aktif
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="#16a34a">
-                      {upcomingEvents}
-                    </Text>
-                  </VStack>
-                </HStack>
-              </CardBody>
-            </Card>
-
-            <Card
-              bg="white"
-              shadow="sm"
-              borderRadius="xl"
-              borderWidth="1px"
-              borderColor="gray.100"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
-            >
-              <CardBody p="4">
-                <HStack spacing="3" align="center">
-                  <Box
-                    p="2"
-                    bg="#faf5ff"
-                    borderRadius="lg"
-                    color="#9333ea"
-                  >
-                    <UserGroupIcon width={20} height={20} />
-                  </Box>
-                  <VStack align="start" spacing="0" flex="1">
-                    <Text fontSize="xs" color="gray.600" fontWeight="500">
-                      Total Anggota
-                    </Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="#9333ea">
-                      {totalMembers}
-                    </Text>
-                  </VStack>
-                </HStack>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-
-          {/* Main Content - 70:30 Layout */}
-          <Box
-            display={{ base: 'block', lg: 'flex' }}
-            gap="6"
-            alignItems="stretch"
-          >
+          {/* Main Content - Responsive Layout */}
+          <Flex direction={{ base: 'column', lg: 'row' }} gap={{ base: 6, lg: 8 }} align="stretch">
             {/* Calendar - 70% */}
             <Box
-              flex={{ base: '1', lg: '0 0 70%' }}
-              mb={{ base: '6', lg: '0' }}
+              flex={{ base: 1, lg: '0 0 70%' }}
+              order={{ base: 2, lg: 1 }}
             >
               <Card
                 bg="white"
@@ -476,9 +377,8 @@ export default function ManagerDashboard() {
 
             {/* Member Activity - 30% */}
             <Box
-              flex={{ base: '1', lg: '0 0 30%' }}
-              position={{ base: 'static', lg: 'sticky' }}
-              top={{ base: 'auto', lg: '8' }}
+              flex={{ base: 1, lg: '0 0 30%' }}
+              order={{ base: 1, lg: 2 }}
             >
               <Card
                 bg="white"
@@ -489,22 +389,38 @@ export default function ManagerDashboard() {
                 overflow="hidden"
                 h="full"
               >
-                <CardHeader p="4" borderBottomWidth="1px" borderColor="gray.100">
+                <CardHeader
+                  p={{ base: 3, md: 4 }}
+                  borderBottomWidth="1px"
+                  borderColor="gray.100"
+                >
                   <HStack spacing="3">
-                    <Box p="2" bg="gray.50" borderRadius="lg" color="gray.600">
+                    <Box
+                      p="2"
+                      bg="gray.50"
+                      borderRadius="lg"
+                      color="gray.600"
+                    >
                       <UserGroupIcon width={20} height={20} />
                     </Box>
                     <Box>
-                      <Heading size="md" color={textPrimary} fontWeight="semibold">
+                      <Heading
+                        size={{ base: 'sm', md: 'md' }}
+                        color={textPrimary}
+                        fontWeight="semibold"
+                      >
                         Monitoring Anggota
                       </Heading>
-                      <Text fontSize="sm" color={textSecondary}>
+                      <Text
+                        fontSize={{ base: 'xs', md: 'sm' }}
+                        color={textSecondary}
+                      >
                         Partisipasi & aktivitas
                       </Text>
                     </Box>
                   </HStack>
                 </CardHeader>
-                <CardBody p="4">
+                <CardBody p={{ base: 3, md: 4 }}>
                   <VStack spacing="4" align="stretch">
                     <Box
                       bg="gray.50"
@@ -512,8 +428,17 @@ export default function ManagerDashboard() {
                       p="3"
                     >
                       <HStack justify="space-between" align="center">
-                        <Text fontSize="sm" color={textSecondary}>Total Partisipasi</Text>
-                        <Text fontSize="lg" fontWeight="bold" color={textPrimary}>
+                        <Text
+                          fontSize={{ base: 'xs', md: 'sm' }}
+                          color={textSecondary}
+                        >
+                          Total Partisipasi
+                        </Text>
+                        <Text
+                          fontSize={{ base: 'md', md: 'lg' }}
+                          fontWeight="bold"
+                          color={textPrimary}
+                        >
                           {totalParticipations}
                         </Text>
                       </HStack>
@@ -525,8 +450,17 @@ export default function ManagerDashboard() {
                       p="3"
                     >
                       <HStack justify="space-between" align="center">
-                        <Text fontSize="sm" color={textSecondary}>Rata-rata/Event</Text>
-                        <Text fontSize="lg" fontWeight="bold" color={textPrimary}>
+                        <Text
+                          fontSize={{ base: 'xs', md: 'sm' }}
+                          color={textSecondary}
+                        >
+                          Rata-rata/Event
+                        </Text>
+                        <Text
+                          fontSize={{ base: 'md', md: 'lg' }}
+                          fontWeight="bold"
+                          color={textPrimary}
+                        >
                           {averageParticipationPerEvent}
                         </Text>
                       </HStack>
@@ -540,8 +474,18 @@ export default function ManagerDashboard() {
                       borderColor="#fca5a5"
                     >
                       <HStack justify="space-between" align="center">
-                        <Text fontSize="sm" color={accentColor} fontWeight="600">Tingkat Isi Slot</Text>
-                        <Text fontSize="lg" fontWeight="bold" color={accentColor}>
+                        <Text
+                          fontSize={{ base: 'xs', md: 'sm' }}
+                          color={accentColor}
+                          fontWeight="600"
+                        >
+                          Tingkat Isi Slot
+                        </Text>
+                        <Text
+                          fontSize={{ base: 'md', md: 'lg' }}
+                          fontWeight="bold"
+                          color={accentColor}
+                        >
                           {filledSlotPercentage}%
                         </Text>
                       </HStack>
@@ -553,11 +497,12 @@ export default function ManagerDashboard() {
                       as="a"
                       href="/dashboard/manager/members"
                       variant="outline"
-                      size="sm"
+                      size={{ base: 'sm', md: 'md' }}
                       borderRadius="xl"
                       colorScheme="red"
                       leftIcon={<UsersIcon width={16} height={16} />}
                       w="full"
+                      minH="44px"
                     >
                       Monitor Anggota
                     </Button>
@@ -565,44 +510,23 @@ export default function ManagerDashboard() {
                 </CardBody>
               </Card>
             </Box>
-          </Box>
+          </Flex>
+
 
           {/* Recent Events Preview */}
         </VStack>
       </Box>
 
-          {/* Add Event Modal */}
-      <Modal
-        isOpen={isAddEventOpen}
-        onClose={() => setIsAddEventOpen(false)}
-        size="2xl"
-        isCentered
-      >
-        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl" overflow="hidden">
-          <ModalHeader
-            color={textPrimary}
-            bg="white"
-            borderBottomWidth="1px"
-            borderColor={borderColor}
-            py="6"
+          {/* Add Event Modal - Using New Responsive Component */}
+          <ManagerResponsiveModal
+            isOpen={isAddEventOpen}
+            onClose={() => setIsAddEventOpen(false)}
+            title="Tambah Acara Baru"
+            subtitle="Buat acara baru untuk UKM Band Bekasi"
+            size="xl"
           >
-            <HStack spacing="3">
-              <Box p="2" bg={accentBg} borderRadius="lg" color={accentColor}>
-                <MusicalNoteIcon width={20} height={20} />
-              </Box>
-              <Box>
-                <Text fontSize="xl" fontWeight="bold">Tambah Acara Baru</Text>
-                <Text fontSize="sm" fontWeight="normal" color={textSecondary}>
-                  Buat acara baru untuk UKM Band Bekasi
-                </Text>
-              </Box>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton top="5" right="5" />
-          <ModalBody py="8" px="8">
             <form onSubmit={handleAddEvent}>
-              <VStack spacing="6" align="stretch">
+              <VStack spacing={{ base: 4, md: 6 }} align="stretch">
                 <FormControl isRequired>
                   <FormLabel color={textPrimary} fontWeight="semibold" mb="2">
                     Judul Acara
@@ -611,7 +535,7 @@ export default function ManagerDashboard() {
                     value={newEvent.title}
                     onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                     placeholder="Contoh: Pentas Seni Sekolah 2024"
-                    size="lg"
+                    size={{ base: 'md', md: 'lg' }}
                     borderRadius="xl"
                     borderColor="gray.300"
                     _hover={{ borderColor: 'gray.400' }}
@@ -629,7 +553,7 @@ export default function ManagerDashboard() {
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     placeholder="Jelaskan detail acara, tema, dan hal penting lainnya..."
                     rows={4}
-                    size="lg"
+                    size={{ base: 'md', md: 'lg' }}
                     borderRadius="xl"
                     borderColor="gray.300"
                     _hover={{ borderColor: 'gray.400' }}
@@ -646,7 +570,7 @@ export default function ManagerDashboard() {
                     type="datetime-local"
                     value={newEvent.date}
                     onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    size="lg"
+                    size={{ base: 'md', md: 'lg' }}
                     borderRadius="xl"
                     borderColor="gray.300"
                     _hover={{ borderColor: 'gray.400' }}
@@ -663,7 +587,7 @@ export default function ManagerDashboard() {
                     value={newEvent.location}
                     onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                     placeholder="Contoh: Aula Sekolah, Jl. Pendidikan No. 1"
-                    size="lg"
+                    size={{ base: 'md', md: 'lg' }}
                     borderRadius="xl"
                     borderColor="gray.300"
                     _hover={{ borderColor: 'gray.400' }}
@@ -673,7 +597,7 @@ export default function ManagerDashboard() {
                 </FormControl>
 
                 <Box
-                  p="5"
+                  p={{ base: 4, md: 5 }}
                   bg={accentBg}
                   borderRadius="xl"
                   borderWidth="1px"
@@ -683,58 +607,34 @@ export default function ManagerDashboard() {
                     <Box p="2" bg="white" borderRadius="lg" color={accentColor}>
                       <ClipboardDocumentIcon width={16} height={16} />
                     </Box>
-                    <Text fontSize="md" color={accentColor} fontWeight="bold">
+                    <Text fontSize={{ base: 'sm', md: 'md' }} color={accentColor} fontWeight="bold">
                       Informasi Penting
                     </Text>
                   </HStack>
                   <VStack align="start" spacing="2" pl="10">
-                    <Text fontSize="sm" color="#991b1b">
+                    <Text fontSize={{ base: 'xs', md: 'sm' }} color="#991b1b">
                       • Acara akan langsung dibuat dengan status <strong>PUBLISHED</strong>
                     </Text>
-                    <Text fontSize="sm" color="#991b1b">
+                    <Text fontSize={{ base: 'xs', md: 'sm' }} color="#991b1b">
                       • 6 slot personel otomatis dibuat (Vocal, Guitar 1, Guitar 2, Keyboard, Bass, Drum)
                     </Text>
-                    <Text fontSize="sm" color="#991b1b">
+                    <Text fontSize={{ base: 'xs', md: 'sm' }} color="#991b1b">
                       • Anggota dapat langsung mendaftar sebagai personel setelah acara dipublikasikan
                     </Text>
                   </VStack>
                 </Box>
               </VStack>
+
+              <ModalActions
+                onCancel={() => setIsAddEventOpen(false)}
+                onConfirm={handleAddEventSubmit}
+                confirmText="Tambah Acara"
+                confirmLoading={isSubmitting}
+                confirmLoadingText="Menyimpan..."
+                confirmColor="red"
+              />
             </form>
-          </ModalBody>
-          <ModalFooter
-            borderTopWidth="1px"
-            borderColor={borderColor}
-            py="5"
-            px="8"
-          >
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={() => setIsAddEventOpen(false)}
-              size="lg"
-              borderRadius="xl"
-              fontWeight="semibold"
-            >
-              Batal
-            </Button>
-            <Button
-              colorScheme="red"
-              onClick={handleAddEvent}
-              isLoading={isSubmitting}
-              loadingText="Menyimpan..."
-              size="lg"
-              borderRadius="xl"
-              fontWeight="semibold"
-              px="8"
-              _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
-              transition="all 0.2s"
-            >
-              Tambah Acara
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </ManagerResponsiveModal>
 
       {/* Event Detail Modal */}
       <EventDetailModal
@@ -743,6 +643,7 @@ export default function ManagerDashboard() {
         event={selectedEvent}
         viewMode="manager" // Manager view mode
       />
+      <Footer />
     </Box>
   );
 }

@@ -38,10 +38,10 @@ export default function EventCalendar({ events, userId, onEventClick }: EventCal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Color scheme
-  const bgCard = useColorModeValue('#ffffff', '#2d3748');
-  const textPrimary = useColorModeValue('#1f2937', '#f7fafc');
-  const textSecondary = useColorModeValue('#6b7280', '#a0aec0');
-  const borderColor = useColorModeValue('#e5e7eb', '#4a5568');
+  const bgCard = '#ffffff';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
+  const borderColor = '#e5e7eb';
   const accentColor = '#3b82f6';
   const accentBg = '#eff6ff';
   const todayBg = 'rgba(59, 130, 246, 0.1)';
@@ -75,9 +75,17 @@ export default function EventCalendar({ events, userId, onEventClick }: EventCal
   const getEventsForDate = (date: Date) => {
     if (!date) return [];
 
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local timezone to avoid +1 day issue
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const dateStr = formatDateToYYYYMMDD(date);
     return events.filter(event => {
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
+      const eventDate = formatDateToYYYYMMDD(new Date(event.date));
       return eventDate === dateStr;
     });
   };
@@ -85,9 +93,17 @@ export default function EventCalendar({ events, userId, onEventClick }: EventCal
   const getUserEventsForDate = (date: Date) => {
     if (!date || !userId) return [];
 
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local timezone to avoid +1 day issue
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const dateStr = formatDateToYYYYMMDD(date);
     return events.filter(event => {
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
+      const eventDate = formatDateToYYYYMMDD(new Date(event.date));
       const isUserEvent = event.personnel.some(p => p.userId === userId);
       return eventDate === dateStr && isUserEvent;
     });
@@ -117,7 +133,12 @@ export default function EventCalendar({ events, userId, onEventClick }: EventCal
   };
 
   const formatMonth = (date: Date) => {
-    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    // Use UTC date to avoid timezone issues
+    return date.toLocaleDateString('id-ID', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    });
   };
 
   const formatDayHeader = (dayIndex: number) => {
@@ -292,7 +313,8 @@ export default function EventCalendar({ events, userId, onEventClick }: EventCal
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
-                    year: 'numeric'
+                    year: 'numeric',
+                    timeZone: 'Asia/Jakarta'
                   })}
                 </Heading>
                 <Text fontSize="sm" color={textSecondary}>

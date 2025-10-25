@@ -1,0 +1,54 @@
+{
+  "name": "Band Binus Bekasi Hub",
+  "short_name": "BandHub",
+  "description": "A platform to connect and collaborate for band enthusiasts at Binus Bekasi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ef4444",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["education", "music", "productivity"],
+  "lang": "id-ID",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icons/favicon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "short_name": "Events",
+      "description": "View available events",
+      "url": "/dashboard/member/available-events",
+      "icons": [
+        {
+          "src": "/icons/favicon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

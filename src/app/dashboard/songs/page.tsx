@@ -49,7 +49,7 @@ import {
   MusicalNoteIcon,
 } from '@heroicons/react/24/outline'; 
 
-import MemberSidebar from '@/components/MemberSidebar'; // Asumsikan path komponen ini benar
+import MemberSidebar from '@/components/MemberSidebar';
 
 interface Song {
   id: string;

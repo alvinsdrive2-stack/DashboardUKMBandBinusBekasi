@@ -30,6 +30,10 @@ import {
   Flex,
   Spacer,
   Spinner,
+  useColorModeValue,
+  Avatar,
+  SimpleGrid as Grid,
+  Center,
 } from '@chakra-ui/react';
 import {
   CalendarDaysIcon,
@@ -43,6 +47,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { EventWithPersonnel } from '@/types';
 import MemberSidebar from '@/components/MemberSidebar';
+import MemberHeader from '@/components/MemberHeader';
+import Footer from '@/components/Footer';
 
 export default function SchedulePage() {
   const { data: session, status } = useSession();
@@ -55,6 +61,24 @@ export default function SchedulePage() {
   const [isClient, setIsClient] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Theme variables consistent with EventDetailModal
+  const bgCard = '#ffffff';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
+  const borderColor = '#e5e7eb';
+  const bgHeader = '#f9fafb';
+  const bgAccentLight = '#dbeafe';
+  const statusBoxBg = '#f9fafb';
+
+  // Helper function to format dates with proper timezone
+  const formatDateID = (date: Date | string, options?: Intl.DateTimeFormatOptions) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      ...options
+    });
+  };
 
   useEffect(() => {
     setIsClient(true);
@@ -180,20 +204,22 @@ export default function SchedulePage() {
   if (!isClient || !session) return null;
 
   // 🎨 Light Mode Theme Variables
-  const bgMain = '#ffffff'; // Putih bersih
-  const textPrimary = '#1f2937'; // Abu-abu gelap (hampir hitam)
-  const textSecondary = '#6b7280'; // Abu-abu sedang
+  const bgMain = '#ffffff'; // Putih bersih/ Abu-abu sedang
   const alertBg = '#f3f4f6'; // Abu-abu sangat terang
   const cardBg = '#ffffff';
-  const borderColor = '#e5e7eb'; // Garis border halus
   const upcomingCardBg = '#f8fafc'; // Latar belakang item event yang lebih terang
   const pastCardBg = '#f0fdf4'; // Latar belakang event selesai
   const accentColor = '#dc2626';
   const accentBg = '#fef2f2';
+  const successColor = '#10b981';
+  const warningColor = '#f59e0b';
+  const dangerColor = '#ef4444';
+
   return (
     <Box minH="100vh" bg={bgMain}>
       <MemberSidebar activeRoute="schedule" />
-      <Box flex="1" ml={{ base: 0, md: '280px' }} p="8">
+      <MemberHeader />
+      <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 8 }}>
         {/* Loading Overlay */}
         {contentLoading && (
           <Box
@@ -366,18 +392,6 @@ export default function SchedulePage() {
                         <Badge colorScheme="green" px="3" py="1" borderRadius="full">
                           Terdaftar
                         </Badge>
-                        <Button
-                          size="sm"
-                          colorScheme="red"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(registration);
-                            onOpen();
-                          }}
-                        >
-                          Batalkan
-                        </Button>
                       </VStack>
                     </Flex>
                   </Box>
@@ -467,9 +481,9 @@ export default function SchedulePage() {
                 <Text color={textSecondary} fontSize="sm" textAlign="center">
                   Anda belum mendaftar untuk event apa pun.
                   <br />
-                  Kunjungi halaman **Daftar Event** untuk melihat event yang tersedia.
+                  Kunjungi halaman Daftar Event untuk melihat event yang tersedia.
                 </Text>
-                <Button colorScheme="red" onClick={() => router.push('/dashboard/available-events')}>
+                <Button colorScheme="red" onClick={() => router.push('/dashboard/member/available-events')}>
                   Lihat Event Tersedia
                 </Button>
               </VStack>
@@ -478,268 +492,328 @@ export default function SchedulePage() {
         </VStack>
 
         {/* Modal Batalkan Pendaftaran */}
-        <Modal isOpen={isOpen} onClose={onClose} size="md">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader color={textPrimary}>Batalkan Pendaftaran</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              {selectedEvent && (
-                <VStack align="stretch" spacing="4">
-                  <Box>
-                    <Heading size="sm" color={textPrimary}>{selectedEvent.eventTitle}</Heading>
-                    <Text color={textSecondary} fontSize="sm">
-                      {selectedEvent.role} •{' '}
-                      {new Date(selectedEvent.eventDate).toLocaleString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </Box>
-                  <Alert status="warning" borderRadius="md" bg="#fffbeb" borderColor="#fef3c7" borderWidth="1px">
-                    <AlertIcon color='#dc2626' />
-                    <Box>
-                      <Text fontWeight="bold" color="#d97706">Peringatan</Text>
-                      <Text fontSize="sm" color={textSecondary}>
-                        Apakah Anda yakin ingin membatalkan pendaftaran untuk event ini? Slot
-                        ini akan tersedia untuk anggota lain.
-                      </Text>
-                    </Box>
-                  </Alert>
-                </VStack>
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onClose}>
-                Tutup
-              </Button>
-              {selectedEvent && (
-                <Button colorScheme="red" onClick={() => handleCancelRegistration(selectedEvent.id)}>
-                  Ya, Batalkan
-                </Button>
-              )}
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-
-        {/* Modal Detail Event (Sudah cukup light/terang) */}
-        <Modal
-          isOpen={isDetailModalOpen}
-          onClose={closeEventDetail}
-          size="2xl"
-          isCentered
-          scrollBehavior="inside"
-        >
-          <ModalOverlay
-            backdropFilter="blur(8px)"
-            bg="rgba(0, 0, 0, 0.4)" // Overlay sedikit gelap untuk fokus
-          />
-          <ModalContent
-            borderRadius="xl"
-            boxShadow="2xl"
-            overflow="hidden"
-            bg="white"
+<Modal
+  isOpen={isOpen}
+  onClose={onClose}
+  size={{ base: 'xs', sm: 'sm', md: 'md' }}
+  isCentered
+>
+  <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+  <ModalContent
+    borderRadius="xl"
+    overflow="hidden"
+    mx={{ base: 4, md: 0 }}
+  >
+    {/* HEADER */}
+    <ModalHeader
+      bg={bgHeader}
+      borderBottomWidth="1px"
+      borderColor={borderColor}
+      py={{ base: 3, md: 4 }}
+    >
+      <HStack spacing={3}>
+        <CalendarDaysIcon width={20} height={20} color={dangerColor} />
+        <Box>
+          <Text
+            fontSize={{ base: 'md', md: 'lg' }}
+            fontWeight="bold"
+            color={textPrimary}
           >
-            {/* Modal Header dengan gradient */}
-            <Box
-              // Gradient Merah
-              bg="linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)"
-              p="6"
-              position="relative"
+            Batalkan Pendaftaran
+          </Text>
+          <Text
+            fontSize="sm"
+            color={textSecondary}
+          >
+            Konfirmasi tindakan ini
+          </Text>
+        </Box>
+      </HStack>
+    </ModalHeader>
+
+    <ModalCloseButton size="sm" />
+
+    {/* BODY */}
+    <ModalBody p={{ base: 4, md: 5 }}>
+      {selectedEvent && (
+        <VStack align="stretch" spacing={4}>
+          {/* Info Event */}
+          <Box>
+            <Heading
+              size="sm"
+              color={textPrimary}
+              mb={2}
+              noOfLines={2}
             >
-              <ModalCloseButton
-                color="white"
-                _hover={{ bg: 'rgba(255,255,255,0.2)' }}
-                borderRadius="full"
-                w="8"
-                h="8"
-              />
-              <VStack align="start" spacing="2" color="white">
-                <HStack>
-                  <Box bg="rgba(255,255,255,0.2)" p="2" borderRadius="md">
-                    <InformationCircleIcon width={24} height={24} />
-                  </Box>
-                  <Box>
-                    <Heading size="lg" color="white">Detail Event</Heading>
-                    <Text color="rgba(255,255,255,0.9)" fontSize="sm">
-                      Informasi lengkap dan manajemen lagu
-                    </Text>
-                  </Box>
-                </HStack>
-              </VStack>
-            </Box>
+              {selectedEvent.eventTitle}
+            </Heading>
 
-            <ModalBody p="0">
-              {selectedRegistration && (
-                <VStack align="stretch" spacing="0">
-                  {/* Event Info Card */}
-                  <Box
-                    bg="#f9fafb"
-                    p="6"
-                    borderBottom="1px"
-                    borderColor={borderColor}
+            <VStack
+              align="start"
+              spacing={1.5}
+              color={textSecondary}
+              fontSize="sm"
+            >
+              <HStack>
+                <UserIcon width={14} height={14} />
+                <Text>{selectedEvent.role}</Text>
+              </HStack>
+              <HStack>
+                <CalendarDaysIcon width={14} height={14} />
+                <Text>
+                  {new Date(selectedEvent.eventDate).toLocaleString('id-ID', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
+              </HStack>
+              <HStack>
+                <MapPinIcon width={14} height={14} />
+                <Text noOfLines={1}>{selectedEvent.eventLocation}</Text>
+              </HStack>
+            </VStack>
+          </Box>
+
+          {/* Warning Section */}
+          <Alert
+            status="warning"
+            borderRadius="md"
+            bg="#fef3c7"
+            borderColor="#f59e0b"
+            borderWidth="1px"
+          >
+            <AlertIcon color={warningColor} />
+            <Text fontSize="sm" color={textSecondary}>
+              Slot kamu akan tersedia untuk anggota lain, dan setlist yang sudah dibuat akan hilang.
+            </Text>
+          </Alert>
+        </VStack>
+      )}
+    </ModalBody>
+
+    {/* FOOTER */}
+    <ModalFooter
+      borderTop="1px solid"
+      borderColor={borderColor}
+      py={{ base: 3, md: 4 }}
+    >
+      <VStack spacing={3} w="full">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClose}
+          colorScheme="gray"
+          w="full"
+        >
+          Batal
+        </Button>
+        {selectedEvent && (
+          <Button
+            colorScheme="red"
+            size="sm"
+            onClick={() => handleCancelRegistration(selectedEvent.id)}
+            w="full"
+          >
+            Ya, Batalkan Pendaftaran
+          </Button>
+        )}
+      </VStack>
+    </ModalFooter>
+  </ModalContent>
+</Modal>
+
+
+        {/* Modal Detail Event */}
+<Modal
+  isOpen={isDetailModalOpen}
+  onClose={closeEventDetail}
+  size={{ base: 'sm', sm: 'md', md: 'lg', lg: '2xl' }}
+  isCentered
+>
+  <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+  <ModalContent borderRadius="xl" overflow="hidden" mx={{ base: 4, md: 0 }}>
+    <ModalHeader
+      bg={bgHeader}
+      borderBottomWidth="1px"
+      borderColor={borderColor}
+      py={{ base: 3, md: 4 }}
+    >
+      <HStack spacing="3">
+        <CalendarDaysIcon width={20} height={20} color={accentColor} />
+        <Box>
+          <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="bold" color={textPrimary}>
+            Detail Event
+          </Text>
+          <Text fontSize={{ base: 'xs', md: 'sm' }} color={textSecondary}>
+            Informasi dan manajemen lagu
+          </Text>
+        </Box>
+      </HStack>
+    </ModalHeader>
+
+    <ModalCloseButton size={{ base: 'sm', md: 'md' }} />
+
+    <ModalBody p={{ base: 5, md: 6 }}>
+      {selectedRegistration && (
+        <VStack align="stretch" spacing={5}>
+          {/* Info Event */}
+          <Box>
+            <Heading
+              size={{ base: 'sm', md: 'md' }}
+              color={textPrimary}
+              mb={2}
+              lineHeight="short"
+            >
+              {selectedRegistration.eventTitle}
+            </Heading>
+
+            <VStack
+              align="start"
+              spacing={2}
+              color={textSecondary}
+              fontSize={{ base: 'sm', md: 'sm' }}
+            >
+              <HStack spacing={2}>
+                <CalendarDaysIcon width={16} height={16} />
+                <Text>
+                  {new Date(selectedRegistration.eventDate).toLocaleString('id-ID', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
+              </HStack>
+
+              <HStack spacing={2}>
+                <MapPinIcon width={16} height={16} />
+                <Text>{selectedRegistration.eventLocation}</Text>
+              </HStack>
+
+              {selectedRegistration.eventDescription && (
+                <HStack align="start" spacing={2}>
+                  <InformationCircleIcon width={16} height={16} />
+                  <Text
+                    fontSize={{ base: 'sm', md: 'sm' }}
+                    color={textSecondary}
+                    whiteSpace="pre-wrap"
                   >
-                    <VStack align="stretch" spacing="4">
-                      <HStack align="start">
-                        <Box
-                          bg="#fef2f2"
-                          p="3"
-                          borderRadius="xl"
-                          border="2px solid"
-                          borderColor="#dc2626"
-                        >
-                          <CalendarDaysIcon width={28} height={28} color="#dc2626" />
-                        </Box>
-                        <Box flex="1">
-                          <Heading size="md" color={textPrimary} mb="2">
-                            {selectedRegistration.eventTitle}
-                          </Heading>
-                          <VStack align="start" spacing="2" color={textSecondary}>
-                            <HStack>
-                              <ClockIcon width={16} height={16} />
-                              <Text fontSize="sm">
-                                {new Date(selectedRegistration.eventDate).toLocaleString('id-ID', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </Text>
-                            </HStack>
-                            <HStack>
-                              <MapPinIcon width={16} height={16} />
-                              <Text fontSize="sm">{selectedRegistration.eventLocation}</Text>
-                            </HStack>
-                          </VStack>
-                        </Box>
-                      </HStack>
-
-                      {selectedRegistration.eventDescription && (
-                        <Box
-                          bg="white"
-                          p="4"
-                          borderRadius="lg"
-                          border="1px solid"
-                          borderColor={borderColor}
-                        >
-                          <HStack align="start" mb="2">
-                            <InformationCircleIcon width={16} height={16} color="#dc2626" />
-                            <Text fontWeight="bold" color={textPrimary}>
-                              Deskripsi Event
-                            </Text>
-                          </HStack>
-                          <Text fontSize="sm" color={textSecondary} lineHeight="1.6">
-                            {selectedRegistration.eventDescription}
-                          </Text>
-                        </Box>
-                      )}
-
-                      {/* User Role Info */}
-                      <HStack spacing="4" justify="space-between">
-                        <Box
-                          bg="white"
-                          p="4"
-                          borderRadius="lg"
-                          flex="1"
-                          border="1px solid"
-                          borderColor={borderColor}
-                        >
-                          <VStack align="center" spacing="2">
-                            <UserIcon width={20} height={20} color="#dc2626" />
-                            <Text fontSize="lg" fontWeight="bold" color={textPrimary}>
-                              {selectedRegistration.role}
-                            </Text>
-                            <Text fontSize="xs" color={textSecondary}>Peran Anda</Text>
-                          </VStack>
-                        </Box>
-                        <Box
-                          bg="white"
-                          p="4"
-                          borderRadius="lg"
-                          flex="1"
-                          border="1px solid"
-                          borderColor={borderColor}
-                        >
-                          <VStack align="center" spacing="2">
-                            <CheckCircleIcon width={20} height={20} color="#10b981" />
-                            <Text fontSize="lg" fontWeight="bold" color="#10b981">
-                              Terdaftar
-                            </Text>
-                            <Text fontSize="xs" color={textSecondary}>Status</Text>
-                          </VStack>
-                        </Box>
-                      </HStack>
-                    </VStack>
-                  </Box>
-
-                  {/* Song Management Section */}
-                  <Box p="6">
-                    <VStack align="stretch" spacing="4">
-                      <HStack justify="space-between" align="center">
-                        <Heading size="md" color={textPrimary}>
-                          <HStack spacing="2" align="center">
-                            <MusicalNoteIcon width={20} height={20} color="#1f2937" />
-                            <Text>Manajemen Lagu</Text>
-                          </HStack>
-                        </Heading>
-                        <Badge bg="#fef2f2" color="#dc2626" px="3" py="1" borderRadius="full">
-                          Kelola setlist
-                        </Badge>
-                      </HStack>
-
-                      <Alert
-                        status="info"
-                        borderRadius="xl"
-                        bg="#f0f9ff"
-                        borderColor="#bfdbfe"
-                        borderWidth="1px"
-                      >
-                        <AlertIcon color='#dc2626' />
-                        <VStack align="start" spacing="1">
-                          <Text fontWeight="600" color={textPrimary} fontSize="sm">
-                            Kelola Lagu Event
-                          </Text>
-                          <Text fontSize="xs" color={textSecondary} lineHeight="1.5">
-                            • Tambahkan lagu-lagu yang akan dibawakan<br />
-                            • Atur urutan setlist<br />
-                            • Berikan informasi kunci dan aransemen
-                          </Text>
-                        </VStack>
-                      </Alert>
-
-                      {/* Action Buttons */}
-                      <HStack spacing="4" justify="center" pt="2">
-                        <Button
-                          colorScheme="red"
-                          size="md"
-                          onClick={navigateToSongManager}
-                          leftIcon={<MusicalNoteIcon width={20} height={20} />}
-                          px="8"
-                        >
-                          Kelola Lagu
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="md"
-                          onClick={closeEventDetail}
-                          px="8"
-                        >
-                          Tutup
-                        </Button>
-                      </HStack>
-                    </VStack>
-                  </Box>
-                </VStack>
+                    {selectedRegistration.eventDescription}
+                  </Text>
+                </HStack>
               )}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
+            </VStack>
+          </Box>
+
+          <Divider />
+
+          {/* Status User */}
+          <HStack
+            spacing={4}
+            p={4}
+            bg={statusBoxBg}
+            borderRadius="md"
+            border="1px solid"
+            borderColor={borderColor}
+            justify="space-between"
+          >
+            <HStack spacing={3}>
+              <Avatar size="sm" name={session?.user?.name} bg={accentColor} />
+              <Box>
+                <Text fontWeight="semibold" fontSize="sm" color={textPrimary}>
+                  {session?.user?.name}
+                </Text>
+                <Text fontSize="xs" color={textSecondary}>
+                  {selectedRegistration.role}
+                </Text>
+              </Box>
+            </HStack>
+
+            <Badge
+              colorScheme="green"
+              fontSize="xs"
+              px={2}
+              py={1}
+              borderRadius="full"
+            >
+              TERDAFTAR
+            </Badge>
+          </HStack>
+
+          {/* Manajemen Lagu */}
+          <Box>
+            <Heading
+              size={{ base: 'sm', md: 'sm' }}
+              color={textPrimary}
+              mb={3}
+            >
+              Manajemen Lagu
+            </Heading>
+
+            <Alert
+              status="info"
+              borderRadius="md"
+              bg={statusBoxBg}
+              borderColor={borderColor}
+              borderWidth="1px"
+            >
+              <AlertIcon color={accentColor} />
+              <Text fontSize="sm" color={textSecondary}>
+                Kelola setlist, tambah lagu, dan atur urutan penampilan untuk event ini.
+              </Text>
+            </Alert>
+          </Box>
+        </VStack>
+      )}
+    </ModalBody>
+
+    <ModalFooter
+      borderTop="1px solid"
+      borderColor={borderColor}
+      py={{ base: 3, md: 4 }}
+    >
+      <HStack
+        w="full"
+        spacing={3}
+        justify="flex-end"
+        flexWrap="wrap"
+      >
+        <Button
+          leftIcon={<MusicalNoteIcon width={16} height={16} />}
+          onClick={navigateToSongManager}
+          colorScheme="blue"
+          variant="outline"
+          size="sm"
+        >
+          Kelola Lagu
+        </Button>
+        <Button
+          colorScheme="red"
+          size="sm"
+          onClick={() => {
+            setSelectedEvent(selectedRegistration);
+            closeEventDetail();
+            onOpen();
+          }}
+        >
+          Batalkan
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={closeEventDetail}
+        >
+          Tutup
+        </Button>
+      </HStack>
+    </ModalFooter>
+  </ModalContent>
+</Modal>
+        <Footer />
       </Box>
     </Box>
   );

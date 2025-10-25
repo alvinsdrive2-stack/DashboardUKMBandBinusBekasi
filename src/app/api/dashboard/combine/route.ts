@@ -37,7 +37,6 @@ function getCacheKey(type: string, userId?: string, page = 1, limit = 10): strin
 
 // Optimized query untuk events dengan single database call
 async function getEventsData(userId?: string, page = 1, limit = 10) {
-  const skip = (page - 1) * limit;
   const now = new Date();
 
   // Untuk sementara gunakan fallback yang lebih reliable sampai query CTE diperbaiki
@@ -63,7 +62,8 @@ async function getEventsDataFallback(userId?: string, page = 1, limit = 10) {
               select: {
                 id: true,
                 name: true,
-                instruments: true
+                instruments: true,
+                major: true
               }
             }
           }
@@ -87,7 +87,8 @@ async function getEventsDataFallback(userId?: string, page = 1, limit = 10) {
             user: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                major: true
               }
             }
           }

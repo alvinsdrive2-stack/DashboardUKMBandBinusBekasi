@@ -119,11 +119,12 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
 
-    // Authorization check - only commissioners can delete
+    // Authorization check - only commissioners and managers can delete
     if (!session?.user?.organizationLvl ||
-        session.user.organizationLvl !== 'COMMISSIONER') {
+        (session.user.organizationLvl !== 'COMMISSIONER' &&
+         session.user.organizationLvl !== 'PENGURUS')) {
       return NextResponse.json(
-        { error: 'Unauthorized - Only commissioners can delete events' },
+        { error: 'Unauthorized - Manager access required' },
         { status: 401 }
       );
     }
@@ -132,7 +133,19 @@ export async function DELETE(
 
     // Check if event exists
     const existingEvent = await prisma.event.findUnique({
-      where: { id: id }
+      where: { id: id },
+      include: {
+        personnel: true,
+        _count: {
+          select: {
+            personnel: {
+              where: {
+                status: 'APPROVED'
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!existingEvent) {
@@ -142,24 +155,56 @@ export async function DELETE(
       );
     }
 
-    // Check if event has approved registrations
-    const approvedRegistrations = await prisma.eventPersonnel.count({
-      where: {
-        eventId: id,
-        status: 'APPROVED'
-      }
-    });
-
-    if (approvedRegistrations > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete event with approved registrations' },
-        { status: 400 }
-      );
+    // Allow deletion regardless of registrations, but log the warning
+    if (existingEvent._count.personnel > 0) {
+      console.warn(`Event ${id} has ${existingEvent._count.personnel} approved registrations but will be deleted anyway`);
     }
 
-    // Delete event (cascade delete will handle personnel and songs)
-    await prisma.event.delete({
-      where: { id: id }
+    // Start a transaction to ensure data consistency
+    const deletionResults = await prisma.$transaction(async (tx) => {
+      console.log(`Starting deletion process for event: ${id}`);
+
+      // Step 1: Delete all EventPersonnel records (performers) for this event
+      console.log(`Step 1: Deleting EventPersonnel for event: ${id}`);
+      const deletedPersonnel = await tx.eventPersonnel.deleteMany({
+        where: {
+          eventId: id
+        }
+      });
+      console.log(`Deleted ${deletedPersonnel.count} EventPersonnel records`);
+
+      // Step 2: Delete all EventSong records for this event
+      console.log(`Step 2: Deleting EventSong for event: ${id}`);
+      const deletedSongs = await tx.eventSong.deleteMany({
+        where: {
+          eventId: id
+        }
+      });
+      console.log(`Deleted ${deletedSongs.count} EventSong records`);
+
+      // Step 3: Delete all EventSlot records for this event (if they exist)
+      console.log(`Step 3: Deleting EventSlots for event: ${id}`);
+      const deletedSlots = await tx.eventSlot.deleteMany({
+        where: {
+          eventId: id
+        }
+      });
+      console.log(`Deleted ${deletedSlots.count} EventSlot records`);
+
+      // Step 4: Delete the event itself
+      console.log(`Step 4: Deleting Event: ${id}`);
+      await tx.event.delete({
+        where: { id: id }
+      });
+
+      console.log(`Successfully completed deletion of event: ${id}`);
+      console.log(`Summary: ${deletedPersonnel.count} personnel, ${deletedSongs.count} songs, ${deletedSlots.count} slots deleted`);
+
+      return {
+        deletedPersonnel: deletedPersonnel.count,
+        deletedSongs: deletedSongs.count,
+        deletedSlots: deletedSlots.count
+      };
     });
 
     // Invalidate cache
@@ -175,7 +220,10 @@ export async function DELETE(
     }
 
     return NextResponse.json({
-      message: 'Event deleted successfully'
+      message: 'Event deleted successfully',
+      deletedPersonnel: deletionResults.deletedPersonnel,
+      deletedSongs: deletionResults.deletedSongs,
+      deletedSlots: deletionResults.deletedSlots
     });
 
   } catch (error) {

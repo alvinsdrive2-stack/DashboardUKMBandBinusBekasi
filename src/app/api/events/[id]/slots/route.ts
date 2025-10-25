@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // Interface untuk konfigurasi slot
 interface SlotConfiguration {
   type: 'VOCAL' | 'GUITAR' | 'BASS' | 'DRUMS' | 'KEYBOARD' | 'CUSTOM';
-  name: string;
-  count: number;
-  required: boolean;
+  name: string; // Manager bisa input nama posisi bebas (contoh: "Backing Vocal", "Perkusi", dll)
+  count: number; // Berapa orang untuk posisi ini
+  required: boolean; // Apakah posisi ini wajib diisi
 }
 
 export async function GET(
@@ -72,6 +73,7 @@ export async function GET(
   }
 }
 
+// Get available user instruments for custom slots
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,6 +82,9 @@ export async function POST(
     const session = await getServerSession();
     const { id: eventId } = await params;
     const body = await request.json();
+
+    // Untuk custom slots, manager bisa input nama posisi bebas
+    // Tidak perlu fetch instruments, biarkan manager input custom role names
 
     // Cek autentikasi dan authorization
     if (!session || (session.user?.organizationLvl !== 'COMMISSIONER' &&
@@ -100,15 +105,13 @@ export async function POST(
       );
     }
 
-    // Default konfigurasi slot band biasa
+    // Default konfigurasi slot band contain (5 instrument utama)
     const defaultSlots: SlotConfiguration[] = [
-      { type: 'VOCAL', name: 'Vokalis Utama', count: 3, required: true },
-      { type: 'VOCAL', name: 'Vokalis Pendukung', count: 2, required: false },
-      { type: 'GUITAR', name: 'Gitar 1', count: 2, required: true },
-      { type: 'GUITAR', name: 'Gitar 2', count: 2, required: false },
+      { type: 'VOCAL', name: 'Vokalis', count: 1, required: true },
+      { type: 'GUITAR', name: 'Gitaris', count: 1, required: true },
       { type: 'BASS', name: 'Basis', count: 1, required: true },
       { type: 'DRUMS', name: 'Drummer', count: 1, required: true },
-      { type: 'KEYBOARD', name: 'Keyboardis/Pianis', count: 2, required: false }
+      { type: 'KEYBOARD', name: 'Keyboardis', count: 1, required: true }
     ];
 
     const finalSlotConfig = enableSlotConfig ? slotConfiguration : defaultSlots;

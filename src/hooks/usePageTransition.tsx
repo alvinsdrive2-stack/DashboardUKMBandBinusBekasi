@@ -107,7 +107,7 @@ export function useSmartPreload() {
   const [preloadedData, setPreloadedData] = useState<Map<string, any>>(new Map());
   const preloadTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  const preloadData = useCallback(async (url: string, cacheKey: string, delay: number = 100) => {
+  const preload = useCallback(async (url: string, cacheKey: string, delay: number = 100) => {
     // Skip if already cached or preloading
     if (preloadedData.has(cacheKey)) {
       return preloadedData.get(cacheKey);
@@ -174,7 +174,7 @@ export function useSmartPreload() {
   }, []);
 
   return {
-    preloadData,
+    preload,
     getPreloadedData,
     clearPreloadedData
   };

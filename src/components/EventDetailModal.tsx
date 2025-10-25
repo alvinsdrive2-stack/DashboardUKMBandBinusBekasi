@@ -15,17 +15,28 @@ import {
   Avatar,
   Divider,
   Heading,
-  Icon,
   Button,
   SimpleGrid,
   useColorModeValue,
+  useToast,
+  Box,
+  Flex, Spinner,
 } from '@chakra-ui/react';
+import {
+  ArrowLeftIcon,
+  TrashIcon,
+  DocumentArrowDownIcon,
+  CalendarDaysIcon,
+  MapPinIcon,
+} from '@heroicons/react/24/outline';
 import { EventWithPersonnel } from '@/types';
+import { useSession } from 'next-auth/react';
+import { useState,useEffect,useCallback } from 'react';
 
 interface EventDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  event: EventWithPersonnel | null;
+  event: EventWithPersonnel & { availableSlots?: any[] } | null;
   currentUserId?: string;
   viewMode?: string;
 }
@@ -34,316 +45,359 @@ export default function EventDetailModal({
   isOpen,
   onClose,
   event,
-  currentUserId,
-  viewMode
 }: EventDetailModalProps) {
+  const { data: session } = useSession();
+  const toast = useToast();
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [eventDetail, setEventDetail] = useState<EventWithPersonnel | null>(null);
+  const [loadingPersonnel, setLoadingPersonnel] = useState(false);
 
-  const bgCard = useColorModeValue('#ffffff', '#2d3748');
-  const textPrimary = useColorModeValue('#1f2937', '#f7fafc');
-  const textSecondary = useColorModeValue('#6b7280', '#a0aec0');
-  const borderColor = useColorModeValue('#e5e7eb', '#4a5568');
-  const accentColor = '#3b82f6';
-  const successColor = '#10b981';
-  const warningColor = '#f59e0b';
-  const dangerColor = '#ef4444';
+  const bgCard = '#ffffff';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
+  const borderColor = '#e5e7eb';
+  const accentColor = 'red.500';
+  const bgHeader = '#f9fafb';
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return { bg: '#f0fdf4', color: successColor };
-      case 'PENDING':
-        return { bg: '#fffbeb', color: warningColor };
-      case 'REJECTED':
-        return { bg: '#fef2f2', color: dangerColor };
-      default:
-        return { bg: '#f3f4f6', color: textSecondary };
+  // Fetch event detail with all personnel when modal opens
+  const fetchEventDetail = useCallback(async () => {
+    if (!event || !event.id) return;
+
+    setLoadingPersonnel(true);
+    try {
+      const response = await fetch(`/api/events/${event.id}/detail`);
+      if (response.ok) {
+        const eventData = await response.json();
+        setEventDetail(eventData);
+      } else {
+        console.error('Failed to fetch event detail');
+        setEventDetail(event);
+      }
+    } catch (error) {
+      console.error('Error fetching event detail:', error);
+      setEventDetail(event);
+    } finally {
+      setLoadingPersonnel(false);
+    }
+  }, [event]);
+
+  const isManager =
+    session?.user?.organizationLvl &&
+    ['COMMISSIONER', 'PENGURUS'].includes(session.user.organizationLvl);
+
+  // Use eventDetail if available, otherwise fallback to original event
+  const displayEvent = eventDetail || event;
+  const filledSlots = displayEvent?.personnel?.filter((p: any) => p.user).length || 0;
+  const totalSlots = displayEvent?.personnel?.length || 0;
+  const availableSlotsCount = totalSlots - filledSlots;
+  const eventDate = displayEvent ? new Date(displayEvent.date) : null;
+
+  // Fetch event detail when modal opens
+  useEffect(() => {
+    if (isOpen && event?.id) {
+      fetchEventDetail();
+    }
+  }, [isOpen, event, fetchEventDetail]);
+
+  if (!displayEvent) return null;
+
+  const downloadPDF = async () => {
+    if (!event) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`/api/events/${event.id}/pdf`);
+      if (!response.ok) throw new Error('Failed');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Event_Report_${event.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({
+        title: 'Berhasil!',
+        description: 'Laporan event berhasil diunduh.',
+        status: 'success',
+        duration: 3000,
+      });
+    } catch {
+      toast({
+        title: 'Gagal mengunduh',
+        description: 'Silakan coba lagi.',
+        status: 'error',
+        duration: 3000,
+      });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  // Sekarang hanya mengembalikan karakter string, bukan elemen JSX
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'APPROVED': return '✓';
-      case 'PENDING': return '…';
-      case 'REJECTED': return '✗';
-      default: return '?';
+  const handleDeleteEvent = async () => {
+    if (!isManager || !event) return;
+    const confirmed = confirm(`Hapus event "${event.title}"?`);
+    if (!confirmed) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/events/manager/${event.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      toast({
+        title: 'Event dihapus',
+        status: 'success',
+        duration: 3000,
+      });
+      onClose();
+      window.location.reload();
+    } catch {
+      toast({
+        title: 'Gagal menghapus',
+        status: 'error',
+        duration: 3000,
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
-
-  const getPersonnelByRole = () => {
-    if (!event) return {};
-    console.log('EventDetailModal - Event data:', event);
-    console.log('EventDetailModal - Personnel data:', event.personnel);
-    const roles = ['Vocal', 'Guitar 1', 'Guitar 2', 'Keyboard', 'Bass', 'Drum'];
-    const personnelByRole: Record<string, any[]> = {};
-    roles.forEach(role => {
-      personnelByRole[role] = (event.personnel || []).filter(p => p.role === role);
-      console.log(`Personnel for role ${role}:`, personnelByRole[role]);
-    });
-    return personnelByRole;
-  };
-
-  if (!event) return null;
-
-  const eventDate = new Date(event.date);
-  const personnelByRole = getPersonnelByRole();
-  const roles = ['Vocal', 'Guitar 1', 'Guitar 2', 'Keyboard', 'Bass', 'Drum'];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" isCentered>
-      <ModalOverlay bg="rgba(0, 0, 0, 0.5)" backdropFilter="blur(4px)" />
-      <ModalContent bg={bgCard} borderRadius="xl" boxShadow="2xl">
-        <ModalHeader pb="4" borderBottom="1px solid" borderColor={borderColor}>
-          <HStack spacing="3">
-            <div
-              style={{
-                backgroundColor: '#eff6ff',
-                padding: '10px',
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                color: accentColor,
-                fontSize: '18px',
-                fontWeight: 'bold'
-              }}
-            >
-              EVENT
-            </div>
-            <VStack align="start" spacing="0" flex="1">
-              <Heading size="lg" color={textPrimary} fontWeight="700">
-                {event.title}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size={{ base: 'full', sm: 'xl', md: '2xl', lg: '4xl' }}
+      scrollBehavior="inside"
+      isCentered
+    >
+      <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
+      <ModalContent
+        borderRadius="2xl"
+        overflow="hidden"
+        mx={{ base: 4, sm: 6, md: 8 }}
+        maxH="90vh"
+      >
+        {/* Header */}
+        <ModalHeader
+  bg={bgHeader}
+  borderBottomWidth="1px"
+  borderColor={borderColor}
+  py={{ base: 3, md: 4 }}
+>
+  <HStack spacing="3">
+    <CalendarDaysIcon width={22} height={22} color={accentColor} />
+    <Box>
+      <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="bold" color={textPrimary}>
+        {event ? event.title : 'No Event Title'}
+      </Text>
+      <Text fontSize={{ base: 'xs', md: 'sm' }} color={textSecondary}>
+        Detail event dan personel
+      </Text>
+    </Box>
+  </HStack>
+</ModalHeader>
+        <ModalCloseButton />
+
+        {/* Body */}
+        <ModalBody px={{ base: 4, md: 6 }} py={{ base: 4, md: 6 }}>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={{ base: 5, md: 6 }}>
+            {/* Info Dasar */}
+            <VStack align="stretch" spacing="4">
+              <Heading
+                size="sm"
+                color={textPrimary}
+                borderBottom="1px solid"
+                borderColor={borderColor}
+                pb="2"
+              >
+                Informasi Dasar
               </Heading>
-              <HStack spacing="3">
-                <Badge
-                  bg={event.status === 'PUBLISHED' ? '#f0fdf4' : '#f3f4f6'}
-                  color={event.status === 'PUBLISHED' ? successColor : textSecondary}
-                  px="3"
-                  py="1"
-                  borderRadius="md"
-                  fontSize="xs"
-                  fontWeight="600"
-                  border="1px solid"
-                  borderColor={event.status === 'PUBLISHED' ? '#d1fae5' : borderColor}
-                >
-                  {event.status}
-                </Badge>
-                {event.isSubmittedByPublic && (
-                  <Badge bg="#fdf4ff" color="#9333ea" px="3" py="1" borderRadius="md" fontSize="xs" fontWeight="600">
-                    Public Submission
-                  </Badge>
-                )}
+
+              <HStack justify="space-between" flexWrap="wrap">
+  <Text fontWeight="semibold" color={textPrimary}>
+    Status:
+  </Text>
+  <Badge
+    colorScheme={event?.status === 'PUBLISHED' ? 'green' : 'gray'}
+    fontSize="sm"
+    borderRadius="full"
+    px="3"
+  >
+    {event?.status ?? 'No Status'}
+  </Badge>
+</HStack>
+
+              <HStack spacing="3" align="start">
+                <CalendarDaysIcon width={20} height={20} color={textSecondary} />
+                <Box>
+                  <Text fontSize="sm" color={textSecondary}>
+                    Tanggal & Waktu
+                  </Text>
+                  <Text fontWeight="medium" color={textPrimary} fontSize={{ base: 'sm', md: 'md' }}>
+                    {eventDate?.toLocaleString('id-ID', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </Box>
               </HStack>
+
+              <HStack spacing="3" align="start">
+                <MapPinIcon width={20} height={20} color={textSecondary} />
+                <Box>
+                  <Text fontSize="sm" color={textSecondary}>
+                    Lokasi
+                  </Text>
+                  <Text fontWeight="medium" color={textPrimary}>
+                    {event?.location ?? 'No Location'}
+                  </Text>
+                </Box>
+              </HStack>
+
+              {event?.description && (
+                <Box>
+                  <Text fontSize="sm" color={textSecondary} mb="1">
+                    Deskripsi
+                  </Text>
+                  <Text fontSize="sm" color={textPrimary} lineHeight="1.6">
+                    {event?.description ?? 'No Description'}
+                  </Text>
+                </Box>
+              )}
+
+              <Divider borderColor={borderColor} />
+
             </VStack>
-          </HStack>
-        </ModalHeader>
 
-        <ModalCloseButton color={textSecondary} _hover={{ color: textPrimary }} />
+            {/* Personel */}
+            <VStack align="stretch" spacing="4">
+              <Flex justify="space-between" align="center" mb="3">
+                <Heading size="sm" color={textPrimary}>
+                  Personel Terdaftar
+                </Heading>
+                <Badge fontSize="xs" px="2" py="1" borderRadius="md">
+                  {filledSlots} / {totalSlots || availableSlotsCount || 0}
+                </Badge>
+              </Flex>
 
-        <ModalBody py="6">
-          <VStack spacing="4" align="stretch" mb="6">
-            <HStack spacing="4" color={textSecondary} fontSize="sm">
-              <HStack>
-                <Text fontSize="md" color={accentColor}>Date:</Text>
-                <Text>
-                  {eventDate.toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </Text>
-              </HStack>
-              <HStack>
-                <Text fontSize="md" color={accentColor}>Time:</Text>
-                <Text>
-                  {eventDate.toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Text>
-              </HStack>
-            </HStack>
-
-            <HStack spacing="2" color={textSecondary} fontSize="sm">
-              <Text fontSize="md" color={accentColor}>Location:</Text>
-              <Text>{event.location}</Text>
-            </HStack>
-
-            {event.description && (
-              <div>
-                <Text fontSize="sm" fontWeight="600" color={textPrimary} mb="2">
-                  Deskripsi
-                </Text>
-                <Text fontSize="sm" color={textSecondary} lineHeight="1.6">
-                  {event.description}
-                </Text>
-              </div>
-            )}
-
-            {event.submittedBy && (
-              <div>
-                <Text fontSize="sm" fontWeight="600" color={textPrimary} mb="2">
-                  Diajukan oleh
-                </Text>
-                <Text fontSize="sm" color={textSecondary}>
-                  {event.submittedBy}
-                </Text>
-              </div>
-            )}
-          </VStack>
-
-          <Divider borderColor={borderColor} my="6" />
-
-          <VStack spacing="4" align="stretch">
-            <Heading size="md" color={textPrimary} fontWeight="600">
-              Line Up Personel
-            </Heading>
-
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing="4">
-              {roles.map(role => {
-                const rolePersonnel = personnelByRole[role] || [];
-                const isCurrentUserInRole = rolePersonnel.some(p => p.userId === currentUserId);
-
-                return (
-                  <div
-                    key={role}
-                    style={{
-                      backgroundColor: isCurrentUserInRole ? '#f0f9ff' : '#f9fafb',
-                      border: `1px solid ${isCurrentUserInRole ? '#3b82f6' : borderColor}`,
-                      borderRadius: '8px',
-                      padding: '16px',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {isCurrentUserInRole && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '0',
-                          right: '0',
-                          backgroundColor: accentColor,
-                          color: 'white',
-                          padding: '4px 8px',
-                          borderBottomLeftRadius: '8px',
-                          fontSize: '10px',
-                          fontWeight: '600'
-                        }}
-                      >
-                        ANDA
-                      </div>
-                    )}
-
-                    <VStack align="start" spacing="3" width="full">
-                      <HStack justify="space-between" width="full">
-                        <Text fontSize="sm" fontWeight="600" color={textPrimary}>
-                          {role}
-                        </Text>
-                        <Badge
-                          bg={rolePersonnel.length > 0 ? '#f0fdf4' : '#fef2f2'}
-                          color={rolePersonnel.length > 0 ? successColor : dangerColor}
-                          px="2"
-                          py="1"
-                          borderRadius="md"
-                          fontSize="xs"
-                          fontWeight="600"
-                        >
-                          {rolePersonnel.length > 0 ? 'Terisi' : 'Kosong'}
-                        </Badge>
+              {loadingPersonnel ? (
+                <Box
+                  bg="gray.50"
+                  border="1px solid"
+                  borderColor={borderColor}
+                  borderRadius="md"
+                  p="6"
+                  textAlign="center"
+                >
+                  <Spinner size="sm" color={accentColor} mb="2" />
+                  <Text color={textSecondary} fontSize="sm">
+                    Memuat data personel...
+                  </Text>
+                </Box>
+              ) : displayEvent.personnel && displayEvent.personnel.length > 0 ? (
+                <VStack
+                  align="stretch"
+                  spacing="2"
+                  maxH={{ base: '200px', md: '250px' }}
+                  overflowY="auto"
+                  p="2"
+                  bg="gray.50"
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                >
+                  {displayEvent.personnel.map((p: any) => (
+                    <HStack
+                      key={p.id}
+                      spacing="3"
+                      justify="space-between"
+                      p="2"
+                      borderRadius="md"
+                      bg={p.user ? 'white' : 'gray.100'}
+                      border="1px solid"
+                      borderColor={p.user ? borderColor : 'gray.300'}
+                    >
+                      <HStack minW="0" flex="1">
+                        <Avatar
+                          size="sm"
+                          name={p.user?.name || p.role}
+                          bg={p.user ? accentColor : 'gray.400'}
+                        />
+                        <VStack align="start" spacing="0" minW="0" flex="1">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="600"
+                            color={textPrimary}
+                            noOfLines={1}
+                          >
+                            {p.user?.name || 'Slot Kosong'}
+                          </Text>
+                          {p.user?.nim && (
+                            <Text fontSize="11px" color={textSecondary} noOfLines={1}>
+                              {p.user.nim}
+                            </Text>
+                          )}
+                          <Text fontSize="12px" color={textSecondary} noOfLines={1}>
+                            {p.role}
+                          </Text>
+                        </VStack>
                       </HStack>
 
-                      {rolePersonnel.length > 0 ? (
-                        <VStack spacing="2" align="start" width="full">
-                          {rolePersonnel.map(personnel => {
-                            const statusColors = getStatusColor(personnel.status);
-                            return (
-                              <HStack
-                                key={personnel.id}
-                                bg="white"
-                                border="1px solid"
-                                borderColor={borderColor}
-                                borderRadius="md"
-                                p="2"
-                                width="full"
-                                justify="space-between"
-                              >
-                                <HStack spacing="2">
-                                  <Avatar
-                                    size="xs"
-                                    name={personnel.user?.name || 'Unknown'}
-                                    bg={accentColor}
-                                    color="white"
-                                    fontSize="10px"
-                                  >
-                                    {(personnel.user?.name || 'U').charAt(0).toUpperCase()}
-                                  </Avatar>
-                                  <VStack align="start" spacing="0">
-                                    <Text fontSize="xs" fontWeight="600" color={textPrimary}>
-                                      {personnel.user?.name || 'Unknown'}
-                                    </Text>
-                                    {personnel.user?.nim && (
-                                      <Text fontSize="10px" color={textSecondary}>
-                                        {personnel.user.nim}
-                                      </Text>
-                                    )}
-                                  </VStack>
-                                </HStack>
-
-                                <HStack spacing="1" alignItems="center">
-                                  <Icon color={statusColors.color} fontSize="16px" fontWeight="bold">
-                                    {getStatusIcon(personnel.status)}
-                                  </Icon>
-                                  <Badge
-                                    bg={statusColors.bg}
-                                    color={statusColors.color}
-                                    px="2"
-                                    py="1"
-                                    borderRadius="md"
-                                    fontSize="10px"
-                                    fontWeight="600"
-                                  >
-                                    {personnel.status}
-                                  </Badge>
-                                </HStack>
-                              </HStack>
-                            );
-                          })}
-                        </VStack>
-                      ) : (
-                        <VStack
-                          py="4"
-                          justify="center"
-                          align="center"
-                          width="full"
-                          bg="white"
-                          border="1px dashed"
-                          borderColor={borderColor}
-                          borderRadius="md"
+                      {p.user && (
+                        <Badge
+                          colorScheme={
+                            p.status === 'APPROVED'
+                              ? 'green'
+                              : p.status === 'PENDING'
+                              ? 'yellow'
+                              : 'red'
+                          }
+                          fontSize="10px"
+                          px="2"
+                          py="1"
+                          borderRadius="sm"
                         >
-                          <Text fontSize="lg" color={textSecondary} fontWeight="bold">
-                            No Personnel
-                          </Text>
-                          <Text fontSize="xs" color={textSecondary} textAlign="center">
-                            Belum ada personel terdaftar
-                          </Text>
-                        </VStack>
+                          {p.status}
+                        </Badge>
                       )}
-                    </VStack>
-                  </div>
-                );
-              })}
-            </SimpleGrid>
-          </VStack>
+                    </HStack>
+                  ))}
+                </VStack>
+              ) : (
+                <Box
+                  bg="gray.50"
+                  border="1px solid"
+                  borderColor={borderColor}
+                  borderRadius="md"
+                  p="6"
+                  textAlign="center"
+                >
+                  <Text color={textSecondary} fontSize="sm">
+                    Belum ada personel terdaftar
+                  </Text>
+                </Box>
+              )}
+            </VStack>
+          </SimpleGrid>
         </ModalBody>
 
-        <ModalFooter pt="4" borderTop="1px solid" borderColor={borderColor}>
+        {/* Footer */}
+        <ModalFooter
+          pt="3"
+          borderTop="1px solid"
+          borderColor={borderColor}
+          flexWrap="wrap"
+        >
           <Button
-            variant="ghost"
+            leftIcon={<ArrowLeftIcon width={18} height={18} />}
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            fontWeight="600"
-            _hover={{ bg: '#f3f4f6' }}
+            colorScheme="gray"
+            w={{ base: 'full', sm: 'auto' }}
           >
-            Tutup
+            Kembali
           </Button>
         </ModalFooter>
       </ModalContent>

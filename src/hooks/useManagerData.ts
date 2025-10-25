@@ -45,6 +45,9 @@ export interface ManagerMember {
   id: string;
   name: string;
   email: string;
+  nim: string;
+  major: string;
+  phoneNumber: string;
   instruments: string[];
   organizationLvl: string;
   stats: {
@@ -197,9 +200,8 @@ export function useManagerMembers(level?: string, active?: string) {
     const total = members.length;
     const active = members.filter(m => m.stats.upcomingEvents > 0).length;
     const totalParticipations = members.reduce((sum, m) => sum + m.stats.totalParticipations, 0);
-    const avgParticipations = total > 0 ? Math.round(totalParticipations / total * 10) / 10 : 0;
 
-    return { total, active, totalParticipations, avgParticipations };
+    return { total, active, totalParticipations };
   }, [members]);
 
   // Invalidate related data

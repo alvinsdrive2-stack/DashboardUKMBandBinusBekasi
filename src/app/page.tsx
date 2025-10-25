@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Box, Spinner, Text } from '@chakra-ui/react';
+import { Box, Spinner, Text, Image } from '@chakra-ui/react';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -35,19 +36,53 @@ export default function Home() {
     return null;
   }
 
+  // Theme colors yang sama dengan dashboard member
+  const bgMain = '#ffffff';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
+  const accentColor = '#dc2626';
+
   return (
     <Box
       display="flex"
+      flexDirection="column"
+      minHeight="100vh"
       justifyContent="center"
       alignItems="center"
-      height="100vh"
-      flexDirection="column"
-      gap="4"
+      bg={bgMain}
     >
-      <Spinner size="xl" color="yellow.400" />
-      <Text fontSize="lg" color="yellow.400" bg="red.600" px="4" py="2" borderRadius="md" border="2px solid" borderColor="yellow.400">
-        Loading...
-      </Text>
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap="6"
+        flex="1"
+        justifyContent="center"
+      >
+        {/* Logo/Favicon */}
+        <Image
+          src="/icons/favicon.png"
+          alt="UKM Band Bekasi"
+          boxSize="80px"
+          objectFit="contain"
+        />
+
+        {/* Loading content */}
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          gap="4"
+        >
+          <Spinner size="xl" color={accentColor} />
+          <Text fontSize="lg" color={textPrimary} fontWeight="500">
+            Loading...
+          </Text>
+          <Text fontSize="sm" color={textSecondary}>
+            Redirecting to your dashboard
+          </Text>
+        </Box>
+      </Box>
     </Box>
   );
 }

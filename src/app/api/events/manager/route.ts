@@ -23,8 +23,6 @@ export async function GET(request: NextRequest) {
     const events = await prisma.event.findMany({
       where: whereClause,
       include: {
-        slotConfigurable: true,
-        slotConfiguration: true,
         personnel: {
           include: {
             user: {
@@ -32,6 +30,11 @@ export async function GET(request: NextRequest) {
                 id: true,
                 name: true,
                 email: true,
+                nim: true,
+                major: true,
+                phoneNumber: true,
+                organizationLvl: true,
+                instruments: true,
               }
             }
           }
@@ -64,12 +67,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+
     const {
       title,
       description,
       date,
-      location
+      location,
+      slotConfigurable,
+      slotConfiguration
     } = body;
+
+    console.log('Destructured variables:', {
+      title,
+      description,
+      date,
+      location,
+      slotConfigurable,
+      slotConfiguration
+    });
 
     // Validate required fields
     if (!title || !date || !location) {
@@ -80,34 +96,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Create event with PUBLISHED status (directly available for members)
+    // Ensure proper date handling - date should already be in ISO format from frontend
+    const eventDate = new Date(date);
+    console.log('Creating event with date:', {
+      input: date,
+      parsed: eventDate.toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
+
     const event = await prisma.event.create({
       data: {
         title,
         description,
-        date: new Date(date),
+        date: eventDate,
         location,
         status: 'PUBLISHED',
         isSubmittedByPublic: false,
       },
     });
 
-    // Create 6 default personnel slots for published events
-    const defaultRoles = [
-      { role: 'Vocal', status: 'PENDING' },
-      { role: 'Guitar 1', status: 'PENDING' },
-      { role: 'Guitar 2', status: 'PENDING' },
-      { role: 'Keyboard', status: 'PENDING' },
-      { role: 'Bass', status: 'PENDING' },
-      { role: 'Drum', status: 'PENDING' }
-    ];
+    // Create personnel slots based on configuration
+    let personnelSlots = [];
 
-    await prisma.eventPersonnel.createMany({
-      data: defaultRoles.map(slot => ({
+    if (slotConfigurable && slotConfiguration && slotConfiguration.length > 0) {
+      // Use custom slot configuration
+      for (const slot of slotConfiguration) {
+        for (let i = 1; i <= slot.count; i++) {
+          const slotName = slot.count > 1 ? `${slot.name} ${i}` : slot.name;
+          personnelSlots.push({
+            eventId: event.id,
+            role: slotName,
+            status: 'PENDING',
+            userId: null, // All slots start empty
+          });
+        }
+      }
+    } else {
+      // Use default slot configuration
+      const defaultRoles = [
+        { role: 'Vocal', status: 'PENDING' },
+        { role: 'Guitar 1', status: 'PENDING' },
+        { role: 'Guitar 2', status: 'PENDING' },
+        { role: 'Keyboard', status: 'PENDING' },
+        { role: 'Bass', status: 'PENDING' },
+        { role: 'Drum', status: 'PENDING' }
+      ];
+
+      personnelSlots = defaultRoles.map((slot: any) => ({
         eventId: event.id,
         role: slot.role,
-        status: slot.status as any, // Type assertion for Prisma
+        status: slot.status,
         userId: null, // All slots start empty
-      }))
+      }));
+    }
+
+    await prisma.eventPersonnel.createMany({
+      data: personnelSlots
     });
 
     return NextResponse.json({

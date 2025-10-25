@@ -20,8 +20,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { EventWithPersonnel } from '@/types';
 import MemberSidebar from '@/components/MemberSidebar';
+import MemberHeader from '@/components/MemberHeader';
 import OptimizedEventCalendar from '@/components/OptimizedEventCalendar';
 import StatsCards from '@/components/StatsCards';
+import Footer from '@/components/Footer';
 import { useOptimizedDashboard, useRealtimeDashboard } from '@/hooks/useOptimizedDashboard';
 
 export default function MemberDashboard() {
@@ -134,11 +136,14 @@ export default function MemberDashboard() {
       <MemberSidebar activeRoute="dashboard" />
       <TransitionOverlay />
 
-      <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '80px', md: 0 }} p={{ base: 4, md: 8 }}>
+      {/* Mobile Header */}
+      <MemberHeader />
+
+      <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 8 }}>
         {loading && (
           <Box
             position="fixed"
-            top={{ base: '80px', md: 0 }}
+            top={{ base: '60px', md: 0 }}
             left={{ base: 0, md: '280px' }}
             right="0"
             bottom="0"
@@ -254,8 +259,9 @@ export default function MemberDashboard() {
           </Box>
 
                   {/* Quick Action Buttons */}
-          
+
         </VStack>
+        <Footer />
       </Box>
     </Box>
   );

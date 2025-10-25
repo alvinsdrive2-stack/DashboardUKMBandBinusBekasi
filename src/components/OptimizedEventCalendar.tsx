@@ -274,18 +274,36 @@ export default memo(function OptimizedEventCalendar({
 
   const getEventsForDate = useCallback((date: Date) => {
     if (!date) return [];
-    const dateStr = date.toISOString().split('T')[0];
+
+    // Use local timezone to avoid +1 day issue
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const dateStr = formatDateToYYYYMMDD(date);
     return events.filter(event => {
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
+      const eventDate = formatDateToYYYYMMDD(new Date(event.date));
       return eventDate === dateStr;
     });
   }, [events]);
 
   const getUserEventsForDate = useCallback((date: Date) => {
     if (!date || !userId) return [];
-    const dateStr = date.toISOString().split('T')[0];
+
+    // Use local timezone to avoid +1 day issue
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const dateStr = formatDateToYYYYMMDD(date);
     return events.filter(event => {
-      const eventDate = new Date(event.date).toISOString().split('T')[0];
+      const eventDate = formatDateToYYYYMMDD(new Date(event.date));
       const isUserEvent = event.personnel && event.personnel.some(p => p.userId === userId);
       return eventDate === dateStr && isUserEvent;
     });

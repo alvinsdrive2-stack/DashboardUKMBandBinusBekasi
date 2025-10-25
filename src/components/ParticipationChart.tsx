@@ -60,10 +60,10 @@ export default function ParticipationChart({
   userStats,
   stats
 }: ParticipationChartProps) {
-  const cardBg = useColorModeValue('white', 'corporate.800');
-  const borderColor = useColorModeValue('corporate.200', 'corporate.700');
-  const textPrimary = useColorModeValue('corporate.900', 'corporate.100');
-  const textSecondary = useColorModeValue('corporate.600', 'corporate.300');
+  const cardBg = '#ffffff';
+  const borderColor = '#e5e7eb';
+  const textPrimary = '#1f2937';
+  const textSecondary = '#6b7280';
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -87,10 +87,10 @@ export default function ParticipationChart({
   };
 
   const chartColors = {
-    user: useColorModeValue('#dc2626', '#ef4444'), // redAccent
-    average: useColorModeValue('#7c3aed', '#a78bfa'), // purple accent
-    total: useColorModeValue('#16a34a', '#4ade80'), // success
-    participants: useColorModeValue('#ea580c', '#fb923c') // orange accent
+    user: '#dc2626', // redAccent
+    average: '#7c3aed', // purple accent
+    total: '#16a34a', // success
+    participants: '#ea580c' // orange accent
   };
 
   return (

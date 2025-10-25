@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
           u.id,
           u.name,
           u.email,
+          u.nim,
+          u.major,
+          u."phoneNumber",
           u.instruments,
           u."organizationLvl",
           COUNT(ep.id) as "totalParticipations",
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN "EventPersonnel" ep ON u.id = ep."userId"
         LEFT JOIN "Event" e ON ep."eventId" = e.id
         WHERE u."organizationLvl" IN ('TALENT', 'SPECTA', 'PENGURUS', 'COMMISSIONER')
-        GROUP BY u.id, u.name, u.email, u.instruments, u."organizationLvl"
+        GROUP BY u.id, u.name, u.email, u.nim, u.major, u."phoneNumber", u.instruments, u."organizationLvl"
       )
       SELECT
         mp.*,
@@ -65,7 +68,7 @@ export async function GET(request: NextRequest) {
       FROM member_participations mp
       LEFT JOIN "EventPersonnel" ep ON mp.id = ep."userId"
       LEFT JOIN "Event" e ON ep."eventId" = e.id
-      GROUP BY mp.id, mp.name, mp.email, mp.instruments, mp."organizationLvl",
+      GROUP BY mp.id, mp.name, mp.email, mp.nim, mp.major, mp."phoneNumber", mp.instruments, mp."organizationLvl",
                mp."totalParticipations", mp."approvedParticipations",
                mp."pendingParticipations", mp."rejectedParticipations", mp."upcomingEvents"
       ORDER BY mp.name ASC
@@ -80,6 +83,9 @@ export async function GET(request: NextRequest) {
       id: member.id,
       name: member.name,
       email: member.email,
+      nim: member.nim,
+      major: member.major,
+      phoneNumber: member.phoneNumber,
       instruments: member.instruments || [],
       organizationLvl: member.organizationLvl,
       stats: {

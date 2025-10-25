@@ -17,6 +17,7 @@ import {
   CardBody,
   Textarea,
 } from '@chakra-ui/react';
+import Footer from '@/components/Footer';
 
 export default function SubmitEvent() {
   const [formData, setFormData] = useState({
@@ -92,120 +93,125 @@ export default function SubmitEvent() {
   };
 
   return (
-    <Container maxW="lg" py={{ base: '12', md: '24' }}>
-      <Stack spacing="8">
-        <Stack spacing="6" align="center">
-          <Heading size={{ base: 'md', md: 'lg' }}>Ajukan Acara</Heading>
-          <Text color="fg.muted" textAlign="center">
-            Isi formulir berikut untuk mengajukan acara untuk UKM Band Bekasi.
-            Pengajuan Anda akan ditinjau oleh pengurus kami.
-          </Text>
-        </Stack>
+    <Box minH="100vh" display="flex" flexDirection="column">
+      <Box flex="1">
+        <Container maxW="lg" py={{ base: '12', md: '24' }}>
+          <Stack spacing="8">
+            <Stack spacing="6" align="center">
+              <Heading size={{ base: 'md', md: 'lg' }}>Ajukan Acara</Heading>
+              <Text color="fg.muted" textAlign="center">
+                Isi formulir berikut untuk mengajukan acara untuk UKM Band Bekasi.
+                Pengajuan Anda akan ditinjau oleh pengurus kami.
+              </Text>
+            </Stack>
 
-        <Card>
-          <CardBody>
-            <form onSubmit={handleSubmit}>
-              <Stack spacing="6">
-                <Stack spacing="5">
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="title">Judul Acara</FormLabel>
-                    <Input
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleChange}
-                      placeholder="Contoh: Pentas Seni Sekolah"
-                    />
-                  </FormControl>
+            <Card>
+              <CardBody>
+                <form onSubmit={handleSubmit}>
+                  <Stack spacing="6">
+                    <Stack spacing="5">
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="title">Judul Acara</FormLabel>
+                        <Input
+                          id="title"
+                          name="title"
+                          value={formData.title}
+                          onChange={handleChange}
+                          placeholder="Contoh: Pentas Seni Sekolah"
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="description">Deskripsi Acara</FormLabel>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      placeholder="Jelaskan secara detail tentang acara Anda..."
-                      rows={4}
-                    />
-                  </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="description">Deskripsi Acara</FormLabel>
+                        <Textarea
+                          id="description"
+                          name="description"
+                          value={formData.description}
+                          onChange={handleChange}
+                          placeholder="Jelaskan secara detail tentang acara Anda..."
+                          rows={4}
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="date">Tanggal Acara</FormLabel>
-                    <Input
-                      id="date"
-                      name="date"
-                      type="datetime-local"
-                      value={formData.date}
-                      onChange={handleChange}
-                    />
-                  </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="date">Tanggal Acara</FormLabel>
+                        <Input
+                          id="date"
+                          name="date"
+                          type="datetime-local"
+                          value={formData.date}
+                          onChange={handleChange}
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="location">Lokasi Acara</FormLabel>
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      placeholder="Contoh: Aula Sekolah, Jl. Pendidikan No. 1"
-                    />
-                  </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="location">Lokasi Acara</FormLabel>
+                        <Input
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleChange}
+                          placeholder="Contoh: Aula Sekolah, Jl. Pendidikan No. 1"
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="submittedBy">Nama Lengkap</FormLabel>
-                    <Input
-                      id="submittedBy"
-                      name="submittedBy"
-                      value={formData.submittedBy}
-                      onChange={handleChange}
-                      placeholder="Nama pengaju acara"
-                    />
-                  </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="submittedBy">Nama Lengkap</FormLabel>
+                        <Input
+                          id="submittedBy"
+                          name="submittedBy"
+                          value={formData.submittedBy}
+                          onChange={handleChange}
+                          placeholder="Nama pengaju acara"
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="email">Email</FormLabel>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="email@example.com"
-                    />
-                  </FormControl>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="email">Email</FormLabel>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          placeholder="email@example.com"
+                        />
+                      </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel htmlFor="phoneNumber">Nomor Telepon</FormLabel>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      placeholder="0812-3456-7890"
-                    />
-                  </FormControl>
-                </Stack>
+                      <FormControl isRequired>
+                        <FormLabel htmlFor="phoneNumber">Nomor Telepon</FormLabel>
+                        <Input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          value={formData.phoneNumber}
+                          onChange={handleChange}
+                          placeholder="0812-3456-7890"
+                        />
+                      </FormControl>
+                    </Stack>
 
-                <Stack spacing="4">
-                  <Button
-                    type="submit"
-                    colorScheme="red"
-                    isLoading={isSubmitting}
-                    loadingText="Mengajukan..."
-                  >
-                    Ajukan Acara
-                  </Button>
-                </Stack>
-              </Stack>
-            </form>
-          </CardBody>
-        </Card>
+                    <Stack spacing="4">
+                      <Button
+                        type="submit"
+                        colorScheme="red"
+                        isLoading={isSubmitting}
+                        loadingText="Mengajukan..."
+                      >
+                        Ajukan Acara
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </form>
+              </CardBody>
+            </Card>
 
-        <Text textAlign="center" color="fg.muted" fontSize="sm">
-          Setelah pengajuan, Anda akan menerima konfirmasi melalui email jika acara disetujui.
-        </Text>
-      </Stack>
-    </Container>
+            <Text textAlign="center" color="fg.muted" fontSize="sm">
+              Setelah pengajuan, Anda akan menerima konfirmasi melalui email jika acara disetujui.
+            </Text>
+          </Stack>
+        </Container>
+      </Box>
+      <Footer />
+    </Box>
   );
 }

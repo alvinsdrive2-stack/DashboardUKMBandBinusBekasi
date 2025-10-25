@@ -37,7 +37,36 @@ export async function POST(
     }
 
     // 2. Body and URL Parameter Extraction
-    const { personnelId, slotId } = await request.json();
+    const { personnelId, slotId, customRole, getUserInstruments } = await request.json();
+
+    // If request is to get user instruments (for custom slot role selection)
+    if (getUserInstruments) {
+      try {
+        // Get current user's instruments
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { instruments: true }
+        });
+
+        if (!user) {
+          return NextResponse.json(
+            { error: 'User not found' },
+            { status: 404 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          instruments: user.instruments || []
+        });
+      } catch (error) {
+        console.error('Error fetching user instruments:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch user instruments' },
+          { status: 500 }
+        );
+      }
+    }
 
     if (!personnelId) {
       return NextResponse.json(
@@ -168,7 +197,9 @@ export async function POST(
       data: {
         userId: userId,
         slotId: slotId || null, // Update slotId jika dipilih
-        status: 'APPROVED' // Auto approve
+        status: 'APPROVED', // Auto approve
+        // Add customRole if provided (for custom slots)
+        ...(customRole && { role: customRole })
       },
       include: {
         user: {
