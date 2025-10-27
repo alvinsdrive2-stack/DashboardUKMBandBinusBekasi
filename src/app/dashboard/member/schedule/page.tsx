@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -48,6 +48,7 @@ import {
 import { EventWithPersonnel } from '@/types';
 import MemberSidebar from '@/components/MemberSidebar';
 import MemberHeader from '@/components/MemberHeader';
+import SearchParamsHandler from '@/components/SearchParamsHandler';
 import Footer from '@/components/Footer';
 
 export default function SchedulePage() {
@@ -57,6 +58,8 @@ export default function SchedulePage() {
   const [events, setEvents] = useState<EventWithPersonnel[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedRegistration, setSelectedRegistration] = useState<any>(null);
+  const [eventPersonnel, setEventPersonnel] = useState<any[]>([]);
+  const [personnelLoading, setPersonnelLoading] = useState(false);
   const [contentLoading, setContentLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -102,6 +105,7 @@ export default function SchedulePage() {
     }
   }, [status]);
 
+  
   const fetchEvents = async () => {
     setContentLoading(true);
     try {
@@ -167,6 +171,8 @@ export default function SchedulePage() {
           eventDate: event.date,
           eventLocation: event.location,
           eventDescription: event.description,
+          // Add event personnel data for fallback
+          eventPersonnel: event.personnel || [],
         })),
     );
   };
@@ -185,14 +191,85 @@ export default function SchedulePage() {
       .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
   };
 
+  const fetchEventPersonnel = async (eventId: string) => {
+    if (!eventId) {
+      console.error('No eventId provided');
+      setEventPersonnel([]);
+      setPersonnelLoading(false);
+      return;
+    }
+
+    setPersonnelLoading(true);
+    console.log('🔄 Fetching event detail for personnel:', eventId);
+
+    try {
+      // Use same API as EventDetailModal
+      const response = await fetch(`/api/events/${eventId}/detail`);
+      console.log('📡 Event detail API response status:', response.status);
+
+      if (response.ok) {
+        const eventData = await response.json();
+        console.log('✅ Event detail data received:', {
+          personnelCount: eventData.personnel?.length || 0,
+          hasPersonnel: !!eventData.personnel
+        });
+        setEventPersonnel(eventData.personnel || []);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Failed to fetch event detail:', response.status, errorText);
+
+        // Fallback to event data
+        const eventPersonnel = selectedRegistration?.eventPersonnel || [];
+        console.log('🔄 Using fallback personnel data:', eventPersonnel.length, 'personnel');
+        setEventPersonnel(eventPersonnel);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching event detail:', error);
+
+      // Fallback to event data
+      const eventPersonnel = selectedRegistration?.eventPersonnel || [];
+      console.log('🔄 Using fallback personnel data due to error:', eventPersonnel.length, 'personnel');
+      setEventPersonnel(eventPersonnel);
+    } finally {
+      setPersonnelLoading(false);
+    }
+  };
+
   const openEventDetail = (registration: any) => {
+    console.log('📋 Opening event detail:', registration);
     setSelectedRegistration(registration);
+    setEventPersonnel([]); // Reset personnel data
     setIsDetailModalOpen(true);
+
+    // Check if eventId exists
+    if (registration.eventId) {
+      console.log('✅ Event ID found:', registration.eventId);
+      // Fetch personnel when modal opens
+      fetchEventPersonnel(registration.eventId);
+    } else {
+      console.error('❌ No eventId in registration:', registration);
+      toast({
+        title: 'Error',
+        description: 'Event ID tidak ditemukan',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const closeEventDetail = () => {
     setSelectedRegistration(null);
+    setEventPersonnel([]); // Reset personnel data
     setIsDetailModalOpen(false);
+
+    // Clean up URL parameters if they exist
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('modal');
+      url.searchParams.delete('eventId');
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   const navigateToSongManager = () => {
@@ -219,6 +296,15 @@ export default function SchedulePage() {
     <Box minH="100vh" bg={bgMain}>
       <MemberSidebar activeRoute="schedule" />
       <MemberHeader />
+
+      {/* SearchParams handler with Suspense boundary */}
+      <Suspense fallback={null}>
+        <SearchParamsHandler
+          events={getUserRegistrations()}
+          contentLoading={contentLoading}
+          openEventDetail={openEventDetail}
+        />
+      </Suspense>
       <Box flex="1" ml={{ base: 0, md: '280px' }} mt={{ base: '60px', md: 0 }} p={{ base: 4, md: 8 }}>
         {/* Loading Overlay */}
         {contentLoading && (
@@ -744,6 +830,135 @@ export default function SchedulePage() {
               TERDAFTAR
             </Badge>
           </HStack>
+
+          {/* Personnel Event - Using EventDetailModal style */}
+          <VStack align="stretch" spacing="4">
+            <Flex justify="space-between" align="center" mb="3">
+              <Heading
+                size={{ base: 'sm', md: 'sm' }}
+                color={textPrimary}
+              >
+                Personel Terdaftar
+              </Heading>
+              <Badge fontSize="xs" px="2" py="1" borderRadius="md">
+                {eventPersonnel.filter(p => p.status === 'APPROVED').length} / {eventPersonnel.length}
+              </Badge>
+            </Flex>
+
+            {personnelLoading ? (
+              <Box
+                bg="gray.50"
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="md"
+                p="6"
+                textAlign="center"
+              >
+                <Spinner size="sm" color={accentColor} mb="2" />
+                <Text color={textSecondary} fontSize="sm">
+                  Memuat data personel...
+                </Text>
+              </Box>
+            ) : eventPersonnel.length > 0 ? (
+              <VStack
+                align="stretch"
+                spacing="2"
+                maxH="280px" // Max height for 8 items
+                overflowY="auto"
+                p="2"
+                bg="gray.50"
+                borderRadius="md"
+                borderWidth="1px"
+                borderColor={borderColor}
+                sx={{
+                  '&::-webkit-scrollbar': {
+                    width: '6px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: '#f1f1f1',
+                    borderRadius: '3px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: '#c1c1c1',
+                    borderRadius: '3px',
+                  },
+                  '&::-webkit-scrollbar-thumb:hover': {
+                    background: '#a8a8a8',
+                  },
+                }}
+              >
+                {eventPersonnel.map((p: any) => (
+                  <HStack
+                    key={p.id}
+                    spacing="3"
+                    justify="space-between"
+                    p="2"
+                    borderRadius="md"
+                    bg={p.user ? 'white' : 'gray.100'}
+                    border="1px solid"
+                    borderColor={p.user ? borderColor : 'gray.300'}
+                  >
+                    <HStack minW="0" flex="1">
+                      <Avatar
+                        size="sm"
+                        name={p.user?.name || p.role}
+                        bg={p.user ? accentColor : 'gray.400'}
+                      />
+                      <VStack align="start" spacing="0" minW="0" flex="1">
+                        <Text
+                          fontSize="sm"
+                          fontWeight="600"
+                          color={textPrimary}
+                          noOfLines={1}
+                        >
+                          {p.user?.name || 'Slot Kosong'}
+                        </Text>
+                        {p.user?.nim && (
+                          <Text fontSize="11px" color={textSecondary} noOfLines={1}>
+                            {p.user.nim}
+                          </Text>
+                        )}
+                        <Text fontSize="12px" color={textSecondary} noOfLines={1}>
+                          {p.role}
+                        </Text>
+                      </VStack>
+                    </HStack>
+
+                    {p.user && (
+                      <Badge
+                        colorScheme={
+                          p.status === 'APPROVED'
+                            ? 'green'
+                            : p.status === 'PENDING'
+                            ? 'yellow'
+                            : 'red'
+                        }
+                        fontSize="10px"
+                        px="2"
+                        py="1"
+                        borderRadius="sm"
+                      >
+                        {p.status}
+                      </Badge>
+                    )}
+                  </HStack>
+                ))}
+              </VStack>
+            ) : (
+              <Box
+                bg="gray.50"
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="md"
+                p="6"
+                textAlign="center"
+              >
+                <Text fontSize="sm" color={textSecondary}>
+                  Belum ada personel terdaftar
+                </Text>
+              </Box>
+            )}
+          </VStack>
 
           {/* Manajemen Lagu */}
           <Box>

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isManager } from '@/utils/roles';
+import { emitNotificationToMultipleUsers } from '@/utils/notificationEmitter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -153,6 +154,55 @@ export async function POST(request: NextRequest) {
     await prisma.eventPersonnel.createMany({
       data: personnelSlots
     });
+
+    // Send notifications to all members about new event
+    try {
+      // Get all members (non-manager users)
+      const members = await prisma.user.findMany({
+        where: {
+          organizationLvl: {
+            in: ['TALENT', 'SPECTA']
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      // Create notifications for all members
+      const notificationData = {
+        title: 'Acara Baru Tersedia!',
+        message: `Acara baru "${title}" telah dibuat. Segera daftar untuk ikut serta!`,
+        type: 'EVENT_STATUS_CHANGED',
+        eventId: event.id,
+        actionUrl: '/dashboard/member/available-events'
+      };
+
+      // Create notifications directly using Prisma
+      await prisma.notification.createMany({
+        data: members.map(member => ({
+          userId: member.id,
+          ...notificationData,
+          isRead: false
+        }))
+      });
+
+      // Send real-time notifications
+      emitNotificationToMultipleUsers(
+        members.map(m => m.id),
+        {
+          id: `temp-${Date.now()}`, // Temporary ID
+          ...notificationData,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        }
+      );
+
+      console.log(`Notifications sent to ${members.length} members for new event: ${title}`);
+    } catch (notificationError) {
+      console.error('Failed to send notifications for new event:', notificationError);
+      // Don't fail the request if notifications fail
+    }
 
     return NextResponse.json({
       message: 'Acara berhasil dibuat',

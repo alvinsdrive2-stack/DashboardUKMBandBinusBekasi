@@ -4,6 +4,7 @@ import "./globals.css";
 import { ChakraProviders } from "@/components/providers/chakra-provider";
 import { SessionProviders } from "@/components/providers/session-provider";
 import { QueryClientProviderWrapper } from "@/components/providers/query-client-provider";
+import { SocketProvider } from "@/contexts/SocketContext";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 const geistSans = Geist({
@@ -68,8 +69,10 @@ export default function RootLayout({
         <SessionProviders>
           <ChakraProviders>
             <QueryClientProviderWrapper>
-              {children}
-              <PWAInstallPrompt />
+              <SocketProvider>
+                {children}
+                <PWAInstallPrompt />
+              </SocketProvider>
             </QueryClientProviderWrapper>
           </ChakraProviders>
         </SessionProviders>

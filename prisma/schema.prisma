@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -10,138 +10,139 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// =======================
-// Models
-// =======================
-
 model User {
-  id              String           @id @default(cuid())
-  name            String
-  nim             String           @unique
-  email           String           @unique
-  major           String
-  instruments     String[]
-  phoneNumber     String
-  organizationLvl OrganizationLvl // Penting untuk membedakan 'Pengurus' (misal: COMMISSIONER)
-  technicLvl      TechnicLvl
-
-  // Relasi ke partisipasi dalam event
-  eventPersonnel  EventPersonnel[]
-
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  instruments          String[]
+  major                String
+  nim                  String               @unique
+  organizationLvl      OrganizationLvl
+  phoneNumber          String
+  technicLvl           TechnicLvl
+  eventPersonnel       EventPersonnel[]
+  notifications        Notification[]
+  notificationSettings NotificationSetting?
+  pushSubscriptions    PushSubscription[]
+  fcmSubscriptions     FCMSubscription[]
 }
 
 model Event {
-  id              String           @id @default(cuid())
-  title           String
-  description     String?
-  date            DateTime
-  location        String
-  status          EventStatus      @default(DRAFT)
-
-  // Field untuk pengajuan publik
-  submittedBy     String?          // Kontak pengaju acara publik
-  isSubmittedByPublic Boolean?     @default(false) // Menandai apakah diajukan oleh publik
-
-  // Relasi ke personel yang tampil
-  personnel       EventPersonnel[]
-
-  // Field untuk slot kostumisasi
-  slotConfigurable Boolean @default(false) // Apakah slot bisa dikostumisasi
-  slotConfiguration Json?       // Konfigurasi slot (vokal, gitar, dll)
-
-  // Relasi ke lagu-lagu dalam event
-  songs           EventSong[]
-
-  // Relasi ke slot yang tersedia
-  availableSlots  EventSlot[]
-
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                  String           @id @default(cuid())
+  title               String
+  description         String?
+  date                DateTime
+  location            String
+  status              EventStatus      @default(DRAFT)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  isSubmittedByPublic Boolean?         @default(false)
+  submittedBy         String?
+  slotConfigurable    Boolean          @default(false)
+  slotConfiguration   Json?
+  personnel           EventPersonnel[]
+  availableSlots      EventSlot[]
+  songs               EventSong[]
+  notifications       Notification[]
 }
 
 model EventPersonnel {
-  id       String           @id @default(cuid())
-  role     String           // misal: Vocal, Guitar 1, Drummer
-  status   ApprovalStatus   @default(PENDING)
+  id      String         @id @default(cuid())
+  role    String
+  status  ApprovalStatus @default(PENDING)
+  userId  String?
+  eventId String
+  slotId  String?
+  event   Event          @relation(fields: [eventId], references: [id])
+  slot    EventSlot?     @relation(fields: [slotId], references: [id])
+  user    User?          @relation(fields: [userId], references: [id])
 
-  userId   String?          // Dibuat nullable untuk slot kosong/lowongan
-  eventId  String
-  slotId   String?          // Relasi ke slot yang dipilih (jika ada)
-
-  // Relasi
-  user     User?            @relation(fields: [userId], references: [id]) // Relasi opsional
-  event    Event            @relation(fields: [eventId], references: [id])
-  slot     EventSlot?        @relation(fields: [slotId], references: [id]) // Relasi ke slot
-
-  // PENAMBAHAN PENTING: Unique Constraint Komposit
-  // 1. Memastikan 1 user HANYA bisa mendaftar 1 role per event.
-  // 2. Memastikan 1 role (misal: "Vocal") HANYA bisa diisi 1 user per event (setelah disetujui/diisi).
-  //    Ini lebih efektif di enforce di logika aplikasi, tapi unique komposit ini memastikan user tidak bisa double-daftar.
   @@unique([userId, eventId])
-  // Saran: jika Anda ingin memastikan role-role default (misal "Vocal") juga unik,
-  // Anda harus membuat role menjadi tabel terpisah atau menambahkan unique constraint:
-  // @@unique([role, eventId])
-  // TAPI, ini akan mengunci satu role ke satu orang selamanya, yang mana mungkin tidak cocok jika
-  // slot awal dibuat kosong dan diisi oleh pengurus.
-
-  // Jadi, biarkan `@unique([userId, eventId])` sebagai kunci utama untuk mencegah double-daftar.
 }
 
 model EventSong {
   id        String   @id @default(cuid())
   title     String
   artist    String?
-  key       String?  // Nada dasar (contoh: C, Am, G#m)
-  duration  String?  // Durasi lagu (contoh: 3:45)
-  notes     String?  // Catatan tambahan tentang lagu
-  order     Int      // Urutan dalam setlist
-
-  // Foreign keys
+  key       String?
+  duration  String?
+  notes     String?
+  order     Int
   eventId   String
-
-  // Relations
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  // Constraints
-  @@unique([eventId, order]) // Setiap order harus unik per event
+  @@unique([eventId, order])
 }
 
 model EventSlot {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   eventId   String
-  slotName  String           // misal: "Vokalis Utama", "Gitar 1", "Drummer"
-  slotType  SlotType  @default(CUSTOM) // Tipe slot untuk kategorisasi
-  capacity  Int      @default(1) // Jumlah orang yang bisa mengisi slot ini
-  required  Boolean  @default(true) // Apakah slot wajib diisi
-  isActive  Boolean  @default(true) // Apakah slot aktif
-
-  // Relasi
-  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  slotName  String
+  slotType  SlotType         @default(CUSTOM)
+  capacity  Int              @default(1)
+  required  Boolean          @default(true)
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   personnel EventPersonnel[]
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Unique constraint
   @@unique([eventId, slotName])
 }
 
-// =======================
-// Enums
-// =======================
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  userId    String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  eventId   String?
+  actionUrl String?
+  event     Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model NotificationSetting {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  eventReminder       Boolean @default(true)
+  personnelAssigned   Boolean @default(true)
+  eventStatusChanged  Boolean @default(true)
+  songAdded           Boolean @default(true)
+  browserNotification Boolean @default(true)
+  pushNotification    Boolean @default(true)
+  emailNotification   Boolean @default(false)
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
 
 enum OrganizationLvl {
-  COMMISSIONER // Saran untuk peran Pengurus/Admin
+  COMMISSIONER
   TALENT
   SPECTA
-  PENGURUS     // Atau gunakan PENGURUS/ADMIN jika tidak ada 'COMMISSIONER'
+  PENGURUS
 }
 
 enum TechnicLvl {
@@ -157,18 +158,42 @@ enum ApprovalStatus {
 }
 
 enum EventStatus {
-  SUBMITTED     // Status untuk acara yang diajukan publik, menunggu approval
-  DRAFT         // Status untuk acara yang sudah di-approve pengurus
-  PUBLISHED     // Status untuk acara yang siap ditampilkan ke anggota
-  FINISHED      // Status untuk acara yang sudah selesai
-  REJECTED      // Status untuk acara yang ditolak
+  DRAFT
+  PUBLISHED
+  FINISHED
+  SUBMITTED
+  REJECTED
 }
 
 enum SlotType {
-  VOCAL         // Slot untuk vokalis
-  GUITAR        // Slot untuk gitaris
-  BASS          // Slot untuk basis
-  DRUMS         // Slot untuk drummer
-  KEYBOARD      // Slot untuk keyboardis/pianis
-  CUSTOM        // Slot kostum (bisa diisi apa saja)
+  VOCAL
+  GUITAR
+  BASS
+  DRUMS
+  KEYBOARD
+  CUSTOM
+}
+
+enum NotificationType {
+  EVENT_REMINDER
+  PERSONNEL_ASSIGNED
+  EVENT_STATUS_CHANGED
+  SONG_ADDED
+  DEADLINE_REMINDER
+  SLOT_AVAILABLE
+}
+
+model FCMSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  deviceInfo Json?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }

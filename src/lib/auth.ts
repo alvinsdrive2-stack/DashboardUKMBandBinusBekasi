@@ -1,6 +1,9 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
+import { getServerSession as authGetServerSession } from 'next-auth';
+
+export const getServerSession = authGetServerSession;
 
 export const authOptions: NextAuthOptions = {
   providers: [

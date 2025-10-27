@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isMember } from '@/utils/roles';
+import { emitNotificationToMultipleUsers } from '@/utils/notificationEmitter';
 
 // Get songs for an event
 export async function GET(
@@ -120,6 +121,68 @@ export async function POST(
         eventId: eventId
       }
     });
+
+    // Send notifications to all event members (except the current user)
+    try {
+      // Get all approved members for this event (except the current user)
+      const eventMembers = await prisma.eventPersonnel.findMany({
+        where: {
+          eventId: eventId,
+          userId: { not: session.user.id }, // Exclude current user
+          status: 'APPROVED'
+        },
+        select: {
+          userId: true
+        }
+      });
+
+      if (eventMembers.length > 0) {
+        // Get event details for notification
+        const eventDetails = await prisma.event.findUnique({
+          where: { id: eventId },
+          select: { title: true }
+        });
+
+        // Get current user's name
+        const currentUser = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { name: true }
+        });
+
+        const notificationData = {
+          title: 'Lagu Baru Ditambahkan!',
+          message: `${currentUser.name} menambahkan lagu "${title}" di acara "${eventDetails.title}"`,
+          type: 'SONG_ADDED',
+          eventId: eventId,
+          actionUrl: `/dashboard/member/my-events/${eventId}?tab=songs`
+        };
+
+        // Create notifications directly using Prisma
+        await prisma.notification.createMany({
+          data: eventMembers.map(member => ({
+            userId: member.userId,
+            ...notificationData,
+            isRead: false
+          }))
+        });
+
+        // Send real-time notifications
+        emitNotificationToMultipleUsers(
+          eventMembers.map(m => m.userId),
+          {
+            id: `temp-${Date.now()}`,
+            ...notificationData,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          }
+        );
+
+        console.log(`Notifications sent to ${eventMembers.length} event members for new song: ${title}`);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send notifications for new song:', notificationError);
+      // Don't fail the request if notifications fail
+    }
 
     return NextResponse.json({
       message: 'Song added successfully',

@@ -1,16 +1,17 @@
 {
-  "name": "Band Binus Bekasi Hub",
-  "short_name": "BandHub",
-  "description": "A platform to connect and collaborate for band enthusiasts at Binus Bekasi.",
+  "name": "Bandhub Binus Bekasi",
+  "short_name": "Bandhub",
+  "description": "Dashboard untuk manajemen acara dan personel UKM Band Binus Bekasi",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ef4444",
+  "background_color": "#dc2626",
+  "theme_color": "#dc2626",
   "orientation": "portrait",
   "scope": "/",
   "categories": ["education", "music", "productivity"],
   "lang": "id-ID",
   "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/favicon.png",
@@ -23,14 +24,26 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "Open your dashboard",
-      "url": "/dashboard",
+      "description": "View member dashboard",
+      "url": "/dashboard/member",
       "icons": [
         {
           "src": "/icons/favicon.png",
@@ -42,7 +55,19 @@
       "name": "Events",
       "short_name": "Events",
       "description": "View available events",
-      "url": "/dashboard/member/available-events",
+      "url": "/events/member",
+      "icons": [
+        {
+          "src": "/icons/favicon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "short_name": "Notifications",
+      "description": "View notifications",
+      "url": "/notifications",
       "icons": [
         {
           "src": "/icons/favicon.png",
@@ -50,5 +75,46 @@
         }
       ]
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard - Wide view"
+    },
+    {
+      "src": "/screenshots/dashboard-narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard - Mobile view"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "share_target": {
+    "action": "/api/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "media",
+          "accept": ["image/*", "audio/*", "video/*"]
+        }
+      ]
+    }
+  },
+  "gcm_sender_id": "103953800507"
 }

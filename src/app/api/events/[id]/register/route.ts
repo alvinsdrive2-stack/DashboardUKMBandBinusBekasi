@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isMember } from '@/utils/roles';
 import { cache } from '@/lib/cache';
+import { emitNotificationToMultipleUsers } from '@/utils/notificationEmitter';
 
 // Map role instruments to standard instrument names for flexible matching
 const roleToInstrumentMap: { [key: string]: string[] } = {
@@ -219,14 +220,70 @@ export async function POST(
       }
     });
 
-    // 6. Cache Invalidation (Clear cache on success)
+    // 6. Send notifications to existing event members
+    try {
+      // Get all existing approved members for this event (except the current user)
+      const existingMembers = await prisma.eventPersonnel.findMany({
+        where: {
+          eventId: eventId,
+          userId: { not: userId }, // Exclude current user
+          status: 'APPROVED'
+        },
+        select: {
+          userId: true
+        }
+      });
+
+      if (existingMembers.length > 0) {
+        // Get event details for notification
+        const eventDetails = await prisma.event.findUnique({
+          where: { id: eventId },
+          select: { title: true, date: true, location: true }
+        });
+
+        const notificationData = {
+          title: 'Anggota Baru Bergabung!',
+          message: `${user.name} telah bergabung dengan acara "${eventDetails.title}" sebagai ${customRole || personnel.role}`,
+          type: 'PERSONNEL_ASSIGNED',
+          eventId: eventId,
+          actionUrl: `/dashboard/member/my-events/${eventId}`
+        };
+
+        // Create notifications directly using Prisma
+        await prisma.notification.createMany({
+          data: existingMembers.map(member => ({
+            userId: member.userId,
+            ...notificationData,
+            isRead: false
+          }))
+        });
+
+        // Send real-time notifications
+        emitNotificationToMultipleUsers(
+          existingMembers.map(m => m.userId),
+          {
+            id: `temp-${Date.now()}`,
+            ...notificationData,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          }
+        );
+
+        console.log(`Notifications sent to ${existingMembers.length} existing members for user join: ${user.name}`);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send notifications for user join:', notificationError);
+      // Don't fail the request if notifications fail
+    }
+
+    // 7. Cache Invalidation (Clear cache on success)
     await cache.invalidatePattern([
       `events:*`,
       `dashboard:*`,
       `stats:${userId}`
     ]);
 
-    // 7. Success Response
+    // 8. Success Response
     const processingTime = Date.now() - startTime;
     console.log(`Registration completed in ${processingTime}ms for user ${userId}, event ${eventId}`);
 

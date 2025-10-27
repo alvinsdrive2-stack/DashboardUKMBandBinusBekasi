@@ -19,7 +19,7 @@ import {
   CardBody,
   Divider,
 } from '@chakra-ui/react';
-import Footer from '@/components/Footer';
+// import Footer from '@/components/Footer';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -180,7 +180,7 @@ export default function SignIn() {
           </Stack>
         </Container>
       </Box>
-      <Footer />
+      {/* <Footer /> */}
     </Box>
   );
 }
