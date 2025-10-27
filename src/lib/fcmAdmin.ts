@@ -1,9 +1,19 @@
 import admin from 'firebase-admin';
 import { prisma } from '@/lib/prisma';
 
-// Check if Firebase Admin is already initialized
-if (!admin.apps.length) {
+// Function to initialize Firebase Admin with error handling
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return admin; // Already initialized
+  }
+
   try {
+    // Debug environment variables
+    console.log('🔍 Firebase Admin Environment Check:');
+    console.log('  - Project ID:', process.env.FIREBASE_PROJECT_ID ? '✅' : '❌');
+    console.log('  - Service Account Email:', process.env.FIREBASE_SERVICE_ACCOUNT_EMAIL ? '✅' : '❌');
+    console.log('  - Private Key:', process.env.FIREBASE_PRIVATE_KEY ? '✅' : '❌');
+
     // Initialize Firebase Admin with service account
     const serviceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID,
@@ -17,12 +27,22 @@ if (!admin.apps.length) {
         projectId: serviceAccount.projectId
       });
       console.log('✅ Firebase Admin initialized successfully');
+      console.log(`📋 Project: ${serviceAccount.projectId}`);
+      console.log(`📧 Service Account: ${serviceAccount.clientEmail}`);
     } else {
       console.log('❌ Firebase Admin credentials not complete');
+      console.log('🔍 Missing credentials:', {
+        projectId: !!serviceAccount.projectId,
+        clientEmail: !!serviceAccount.clientEmail,
+        privateKey: !!serviceAccount.privateKey
+      });
     }
   } catch (error) {
     console.error('❌ Failed to initialize Firebase Admin:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : 'Unknown error');
   }
+
+  return admin;
 }
 
 export async function sendFCMNotification(
@@ -39,6 +59,19 @@ export async function sendFCMNotification(
   }
 ) {
   try {
+    // Initialize Firebase Admin
+    const adminApp = initializeFirebaseAdmin();
+
+    if (adminApp.apps.length === 0) {
+      return {
+        success: false,
+        message: 'Firebase Admin not initialized',
+        sent: 0,
+        failed: 0,
+        total: 0,
+        error: 'Firebase Admin initialization failed'
+      };
+    }
     // Get all active FCM subscriptions for the user
     const subscriptions = await prisma.fCMSubscription.findMany({
       where: {
@@ -168,10 +201,18 @@ export async function sendFCMNotification(
 
 export async function checkFCMSetup() {
   try {
-    if (!admin.apps.length) {
+    // Initialize Firebase Admin if needed
+    const adminApp = initializeFirebaseAdmin();
+
+    if (adminApp.apps.length === 0) {
       return {
         initialized: false,
-        error: 'Firebase Admin not initialized'
+        error: 'Firebase Admin not initialized',
+        envStatus: {
+          projectId: !!process.env.FIREBASE_PROJECT_ID,
+          serviceAccountEmail: !!process.env.FIREBASE_SERVICE_ACCOUNT_EMAIL,
+          privateKey: !!process.env.FIREBASE_PRIVATE_KEY
+        }
       };
     }
 
