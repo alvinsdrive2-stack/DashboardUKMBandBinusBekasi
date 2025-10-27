@@ -192,11 +192,12 @@ export function useUniversalNotifications() {
       }
     );
 
-    // Try FCM if available
+    // Try FCM Admin (new implementation) if available
     let fcmSuccess = false;
     if (fcmAvailable && session?.user?.id) {
       try {
-        const response = await fetch('/api/fcm/send', {
+        addLog('📤 Trying FCM Admin API...');
+        const response = await fetch('/api/fcm/admin/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -218,11 +219,18 @@ export function useUniversalNotifications() {
 
         if (response.ok) {
           const result = await response.json();
-          addLog(`📊 FCM result: ${result.message}`);
+          addLog(`📊 FCM Admin result: ${result.message}`);
+          addLog(`📊 FCM Admin sent: ${result.sent}, failed: ${result.failed}`);
+          if (result.setup) {
+            addLog(`🔧 FCM Admin setup: ${JSON.stringify(result.setup)}`);
+          }
           fcmSuccess = result.sent > 0;
+        } else {
+          const error = await response.json();
+          addLog(`❌ FCM Admin HTTP error: ${error.error || error.details || 'Unknown error'}`);
         }
       } catch (error) {
-        addLog(`❌ FCM send failed: ${error.message}`);
+        addLog(`❌ FCM Admin send failed: ${error.message}`);
       }
     }
 
