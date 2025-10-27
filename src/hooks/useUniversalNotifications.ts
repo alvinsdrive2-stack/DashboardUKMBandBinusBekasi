@@ -36,17 +36,28 @@ export function useUniversalNotifications() {
     if (!mounted) return;
 
     // Check browser support
-    const supported = 'Notification' in window && 'serviceWorker' in navigator;
+    const hasNotification = 'Notification' in window;
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    const hasPushManager = 'PushManager' in navigator;
+
+    const supported = hasNotification && hasServiceWorker;
     setIsSupported(supported);
 
     if (supported) {
       setPermission(Notification.permission);
-      setFcmAvailable('PushManager' in navigator);
+
+      // Relaxed FCM availability check - try FCM even if PushManager detection fails
+      const fcmAvailable = hasPushManager || (window.isSecureContext && hasNotification);
+      setFcmAvailable(fcmAvailable);
 
       addLog('🔔 Universal Notifications initialized');
       addLog(`📱 Browser: ${navigator.userAgent.split(' ').slice(-2).join(' ')}`);
       addLog(`🌐 Protocol: ${window.location.protocol}`);
       addLog(`🔒 Secure Context: ${window.isSecureContext}`);
+      addLog(`🔔 Notification API: ${hasNotification ? '✅' : '❌'}`);
+      addLog(`🔧 Service Worker: ${hasServiceWorker ? '✅' : '❌'}`);
+      addLog(`📡 Push Manager: ${hasPushManager ? '✅' : '❌'}`);
+      addLog(`🚀 FCM Available: ${fcmAvailable ? '✅' : '❌'} (relaxed detection)`);
     }
   }, [mounted]);
 
@@ -123,8 +134,14 @@ export function useUniversalNotifications() {
   }, [isSupported, permission, sendLocalNotification]);
 
   const attemptFCM = useCallback(async () => {
-    if (!session?.user?.id || !fcmAvailable) {
-      addLog('❌ FCM not available (no user or no PushManager support)');
+    if (!session?.user?.id) {
+      addLog('❌ FCM not available (no user session)');
+      return null;
+    }
+
+    if (!fcmAvailable) {
+      addLog('❌ FCM not available (browser/environment limitations)');
+      addLog('🔍 This may be due to missing PushManager support or insecure context');
       return null;
     }
 
