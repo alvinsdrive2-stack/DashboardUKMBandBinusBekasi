@@ -377,7 +377,7 @@ export default function TestUniversalNotifications() {
 
             {/* Info */}
             <Card p={4} bg="blue.50">
-              <Heading size="mb={3}>💡 How Universal Notifications Work:</Heading>
+              <Heading size="md" mb={3}>💡 How Universal Notifications Work:</Heading>
               <VStack spacing={2} align="start">
                 <Text>• <strong>Primary: Local Notifications</strong> - Always work, no server needed</Text>
                 <Text>• <strong>Secondary: FCM</strong> - Better delivery, may fail in some environments</Text>
