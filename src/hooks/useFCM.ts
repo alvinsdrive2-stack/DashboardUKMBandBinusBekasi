@@ -37,8 +37,24 @@ export function useFCM() {
 
     // Listen for foreground messages (only if Firebase is available)
     if (typeof window !== 'undefined') {
-      import('@/lib/firebase').then(({ onForegroundMessage }) => {
-        onForegroundMessage();
+      import('@/firebase/client').then(({ messaging, onMessage }) => {
+        onMessage(messaging, (payload) => {
+          console.log('Foreground message received:', payload);
+
+          if (payload.notification) {
+            const notification = new Notification(payload.notification.title || 'UKM Band Dashboard', {
+              body: payload.notification.body || 'You have a new notification',
+              icon: payload.notification.icon || '/icons/favicon.png',
+              badge: '/icons/favicon.png',
+              tag: payload.notification.tag || 'fcm-foreground',
+              data: payload.data || {}
+            });
+
+            setTimeout(() => {
+              notification.close();
+            }, 5000);
+          }
+        });
       }).catch(() => {
         console.log('Firebase not available');
       });
@@ -75,8 +91,8 @@ export function useFCM() {
 
     try {
       // Dynamically import Firebase functions
-      const { getFCMToken } = await import('@/lib/firebase');
-      const token = await getFCMToken();
+      const { requestForToken } = await import('@/firebase/client');
+      const token = await requestForToken();
 
       if (!token) {
         throw new Error('Failed to get FCM token');

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 // Asumsikan path ini benar
-import { authOptions } from '@/lib/auth'; 
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isMember } from '@/utils/roles';
 import { cache } from '@/lib/cache';
 import { emitNotificationToMultipleUsers } from '@/utils/notificationEmitter';
+import AutoNotificationService from '@/services/autoNotificationService';
 
 // Map role instruments to standard instrument names for flexible matching
 const roleToInstrumentMap: { [key: string]: string[] } = {
@@ -220,9 +221,9 @@ export async function POST(
       }
     });
 
-    // 6. Send notifications to existing event members
+    // 6. Send notifications to existing event members (BOTH old and new system)
     try {
-      // Get all existing approved members for this event (except the current user)
+      // OLD SYSTEM: Get all existing approved members for this event (except the current user) - TETEP DIPAKE!
       const existingMembers = await prisma.eventPersonnel.findMany({
         where: {
           eventId: eventId,
@@ -249,7 +250,7 @@ export async function POST(
           actionUrl: `/dashboard/member/my-events/${eventId}`
         };
 
-        // Create notifications directly using Prisma
+        // Create notifications directly using Prisma - TETEP DIPAKE!
         await prisma.notification.createMany({
           data: existingMembers.map(member => ({
             userId: member.userId,
@@ -258,7 +259,7 @@ export async function POST(
           }))
         });
 
-        // Send real-time notifications
+        // Send real-time notifications - TETEP DIPAKE!
         emitNotificationToMultipleUsers(
           existingMembers.map(m => m.userId),
           {
@@ -269,8 +270,13 @@ export async function POST(
           }
         );
 
-        console.log(`Notifications sent to ${existingMembers.length} existing members for user join: ${user.name}`);
+        console.log(`OLD notifications sent to ${existingMembers.length} existing members for user join: ${user.name}`);
       }
+
+      // NEW SYSTEM: FCM notifications
+      await AutoNotificationService.notifyMemberJoinedEvent(eventId, user.name);
+      console.log(`NEW FCM notifications sent for member join: ${user.name}`);
+
     } catch (notificationError) {
       console.error('Failed to send notifications for user join:', notificationError);
       // Don't fail the request if notifications fail

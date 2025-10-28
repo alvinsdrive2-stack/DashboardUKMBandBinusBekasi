@@ -3,13 +3,13 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 // Firebase configuration dengan credentials dari environment variables
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDnTT7bVg8ETNal9Jme1vFcEKDPuKaC7Lo",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "ukm-band-dashboard.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "ukm-band-dashboard",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "ukm-band-dashboard.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "317047973293",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:317047973293:web:64c6ae39f9d9d16b3f2d24",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-EKGK8JCEQJ"
+  apiKey: "AIzaSyDnTT7bVg8ETNal9Jme1vFcEKDPuKaC7Lo",
+  authDomain: "ukm-band-dashboard.firebaseapp.com",
+  projectId: "ukm-band-dashboard",
+  storageBucket: "ukm-band-dashboard.firebasestorage.app",
+  messagingSenderId: "317047973293",
+  appId: "1:317047973293:web:64c6ae39f9d9d16b3f2d24",
+  measurementId: "G-EKGK8JCEQJ",
 };
 
 // Initialize Firebase
@@ -52,7 +52,7 @@ export const getFCMToken = async (): Promise<string | null> => {
 
     // Register service worker untuk FCM V1
     console.log('🔧 Registering Firebase Service Worker...');
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-v1-sw.js', {
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
       scope: '/'
     });
     console.log('✅ Firebase Service Worker registered:', registration.scope);

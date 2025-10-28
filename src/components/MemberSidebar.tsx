@@ -552,10 +552,6 @@ export default function MemberSidebar({ activeRoute }: MemberSidebarProps) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  // Debug log untuk melihat data user
-  console.log('Session user data:', session?.user);
-  console.log('User instruments:', (session?.user as any)?.instruments);
-
   return (
     <>
       {/* Desktop Fixed Sidebar */}

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isManager } from '@/utils/roles';
 import { emitNotificationToMultipleUsers } from '@/utils/notificationEmitter';
+import AutoNotificationService from '@/services/autoNotificationService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -155,9 +156,9 @@ export async function POST(request: NextRequest) {
       data: personnelSlots
     });
 
-    // Send notifications to all members about new event
+    // Send notifications to all members about new event (BOTH old and new system)
     try {
-      // Get all members (non-manager users)
+      // OLD SYSTEM: Get all members (non-manager users) - TETEP DIPAKE!
       const members = await prisma.user.findMany({
         where: {
           organizationLvl: {
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Create notifications for all members
+      // Create notifications for all members - TETEP DIPAKE!
       const notificationData = {
         title: 'Acara Baru Tersedia!',
         message: `Acara baru "${title}" telah dibuat. Segera daftar untuk ikut serta!`,
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
         actionUrl: '/dashboard/member/available-events'
       };
 
-      // Create notifications directly using Prisma
+      // Create notifications directly using Prisma - TETEP DIPAKE!
       await prisma.notification.createMany({
         data: members.map(member => ({
           userId: member.id,
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
         }))
       });
 
-      // Send real-time notifications
+      // Send real-time notifications - TETEP DIPAKE!
       emitNotificationToMultipleUsers(
         members.map(m => m.id),
         {
@@ -198,7 +199,12 @@ export async function POST(request: NextRequest) {
         }
       );
 
-      console.log(`Notifications sent to ${members.length} members for new event: ${title}`);
+      console.log(`OLD notifications sent to ${members.length} members for new event: ${title}`);
+
+      // NEW SYSTEM: FCM notifications
+      await AutoNotificationService.notifyNewEvent(event.id);
+      console.log(`NEW FCM notifications sent for new event: ${title}`);
+
     } catch (notificationError) {
       console.error('Failed to send notifications for new event:', notificationError);
       // Don't fail the request if notifications fail

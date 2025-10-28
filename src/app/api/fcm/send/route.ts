@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { adminMessaging } from '@/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,68 +56,112 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Send to FCM (using environment variable for server key)
-    const serverKey = process.env.FCM_SERVER_KEY;
-    if (!serverKey) {
-      return NextResponse.json({
-        success: false,
-        message: 'FCM server key not configured',
-        sent: 0
-      });
-    }
-
+    // Send to FCM using Firebase Admin SDK
     const results = [];
     let successCount = 0;
     let failureCount = 0;
 
-    // Send to each subscription
-    for (const subscription of subscriptions) {
-      try {
-        const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `key=${serverKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            ...fcmMessage,
-            to: subscription.token
-          })
-        });
+    // Prepare tokens for multicast messaging
+    const tokens = subscriptions.map(sub => sub.token);
 
-        const result = await response.json();
+    try {
+      // Send multicast message using Firebase Admin SDK
+      const message = {
+        notification: {
+          title,
+          body: message,
+          icon: icon || '/icons/favicon.png',
+          badge: badge || '/icons/favicon.png',
+          tag: tag || `notification-${Date.now()}`,
+          clickAction: actionUrl || '/dashboard/member'
+        },
+        data: {
+          type: data?.type || 'NOTIFICATION',
+          userId,
+          eventId: data?.eventId?.toString(),
+          notificationId: data?.notificationId?.toString(),
+          actionUrl: actionUrl || '/dashboard/member',
+          timestamp: new Date().toISOString(),
+          ...data
+        },
+        webpush: {
+          fcmOptions: {
+            link: actionUrl || '/dashboard/member'
+          }
+        },
+        tokens: tokens
+      };
 
-        if (response.ok && result.success === 1) {
+      const response = await adminMessaging.sendEachForMulticast(message);
+
+      // Process results
+      for (let i = 0; i < response.responses.length; i++) {
+        const resp = response.responses[i];
+        const token = tokens[i];
+        const subscription = subscriptions[i];
+
+        if (resp.success) {
           successCount++;
           results.push({
-            token: subscription.token.substring(0, 20) + '...',
+            token: token.substring(0, 20) + '...',
             status: 'success',
-            messageId: results.message_id
+            messageId: resp.messageId
           });
         } else {
           failureCount++;
           results.push({
-            token: subscription.token.substring(0, 20) + '...',
+            token: token.substring(0, 20) + '...',
             status: 'failed',
-            error: result.results?.[0]?.error || result.error || 'Unknown error'
+            error: resp.error?.message || 'Unknown error'
           });
 
           // Remove invalid subscription
-          if (result.results?.[0]?.error === 'NotRegistered' || result.results?.[0]?.error === 'InvalidRegistration') {
+          if (resp.error?.code === 'messaging/registration-token-not-registered' ||
+              resp.error?.code === 'messaging/invalid-registration-token') {
             await prisma.fCMSubscription.update({
               where: { id: subscription.id },
               data: { isActive: false }
             });
           }
         }
+      }
 
-      } catch (error) {
-        failureCount++;
-        results.push({
-          token: subscription.token.substring(0, 20) + '...',
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+    } catch (error) {
+      console.error('Error sending multicast FCM message:', error);
+
+      // Fallback to individual messages if multicast fails
+      for (const subscription of subscriptions) {
+        try {
+          const message = {
+            ...fcmMessage,
+            token: subscription.token
+          };
+
+          const response = await adminMessaging.send(message);
+          successCount++;
+          results.push({
+            token: subscription.token.substring(0, 20) + '...',
+            status: 'success',
+            messageId: response
+          });
+        } catch (error) {
+          failureCount++;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          results.push({
+            token: subscription.token.substring(0, 20) + '...',
+            status: 'failed',
+            error: errorMessage
+          });
+
+          // Remove invalid subscription
+          if (errorMessage.includes('registration-token-not-registered') ||
+              errorMessage.includes('invalid-registration-token')) {
+            await prisma.fCMSubscription.update({
+              where: { id: subscription.id },
+              data: { isActive: false }
+            });
+          }
+        }
       }
     }
 

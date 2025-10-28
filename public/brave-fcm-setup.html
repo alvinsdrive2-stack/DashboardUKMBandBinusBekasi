@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brave Browser FCM Setup Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .step {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .logs {
+            background-color: #2d3748;
+            color: #48bb78;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦁 Brave Browser FCM Setup</h1>
+
+        <div class="warning">
+            <strong>⚠️ Perhatian:</strong> Brave browser memblokir Web Push API secara default.
+            Ikuti setup di bawah ini untuk enable FCM notifications.
+        </div>
+
+        <h2>📋 Browser Support Check</h2>
+        <button onclick="checkBrowserSupport()">Check Browser Support</button>
+        <div id="supportStatus" class="status"></div>
+
+        <h2>🔧 Setup Instructions for Brave</h2>
+
+        <div class="step">
+            <h3>Step 1: Disable Brave Shields</h3>
+            <p>1. Click Brave Lion icon 🦁 di address bar</p>
+            <p>2. Select "Disable for this site"</p>
+            <p>3. Refresh halaman ini</p>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Enable Notifications</h3>
+            <p>1. Buka <code>brave://settings/content/notifications</code></p>
+            <p>2. Enable "Sites can ask to send notifications"</p>
+            <p>3. Add <code>localhost:3000</code> ke allowed sites</p>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Enable Web Push API</h3>
+            <p>1. Buka <code>brave://settings/privacy</code></p>
+            <p>2. Scroll ke "Web Push API"</p>
+            <p>3. Enable "Allow sites to use Web Push API"</p>
+            <p>4. Restart browser</p>
+        </div>
+
+        <h2>🧪 Test FCM Functionality</h2>
+        <button onclick="testNotifications()">Test Notification Permission</button>
+        <button onclick="testServiceWorker()">Test Service Worker</button>
+        <button onclick="testFCM()">Test FCM Token</button>
+
+        <div id="testStatus" class="status"></div>
+
+        <h2>📝 Test Logs</h2>
+        <div id="logs" class="logs">Logs akan muncul di sini...</div>
+
+        <div class="success">
+            <strong>💡 Rekomendasi:</strong> Untuk development, gunakan Chrome browser yang lebih
+            mendukung Web Push API tanpa konfigurasi tambahan.
+        </div>
+
+        <p>
+            <a href="/test-fcm" target="_blank">📱 Buka Test FCM Page</a> |
+            <a href="http://localhost:3000" target="_blank">🏠 Dashboard</a>
+        </p>
+    </div>
+
+    <script>
+        const logs = document.getElementById('logs');
+        const supportStatus = document.getElementById('supportStatus');
+        const testStatus = document.getElementById('testStatus');
+
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.textContent += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function checkBrowserSupport() {
+            addLog('🔍 Checking browser support...');
+
+            const checks = {
+                'Notifications': 'Notification' in window,
+                'Service Worker': 'serviceWorker' in navigator,
+                'Push API': 'PushManager' in window,
+                'Secure Context': window.isSecureContext || location.hostname === 'localhost',
+                'User Agent': navigator.userAgent.includes('Brave') ? 'Brave' :
+                             navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Other'
+            };
+
+            let html = '<h4>Browser Support Status:</h4><ul>';
+            for (const [feature, supported] of Object.entries(checks)) {
+                const status = supported ? '✅' : '❌';
+                const color = supported ? 'green' : 'red';
+                html += `<li style="color: ${color}">${status} ${feature}: ${supported}</li>`;
+                addLog(`${status} ${feature}: ${supported}`);
+            }
+            html += '</ul>';
+
+            supportStatus.innerHTML = html;
+            supportStatus.className = 'status';
+        }
+
+        async function testNotifications() {
+            addLog('🔔 Testing notification permission...');
+
+            try {
+                const permission = await Notification.requestPermission();
+                addLog(`📋 Permission result: ${permission}`);
+
+                if (permission === 'granted') {
+                    testStatus.innerHTML = '<div style="color: green;">✅ Notification permission granted!</div>';
+
+                    // Test show notification
+                    const notification = new Notification('Test Notification', {
+                        body: 'FCM test berhasil di Brave browser!',
+                        icon: '/icons/favicon.png'
+                    });
+
+                    setTimeout(() => notification.close(), 3000);
+                    addLog('✅ Test notification sent successfully');
+                } else if (permission === 'denied') {
+                    testStatus.innerHTML = '<div style="color: red;">❌ Notification permission denied. Check Brave settings.</div>';
+                } else {
+                    testStatus.innerHTML = '<div style="color: orange;">⏳ Notification permission not requested yet.</div>';
+                }
+            } catch (error) {
+                addLog(`❌ Error testing notifications: ${error.message}`);
+                testStatus.innerHTML = `<div style="color: red;">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testServiceWorker() {
+            addLog('🔧 Testing service worker registration...');
+
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    addLog(`✅ Service worker registered: ${registration.scope}`);
+                    testStatus.innerHTML = '<div style="color: green;">✅ Service worker registered successfully!</div>';
+                } else {
+                    addLog('❌ Service Worker not supported');
+                    testStatus.innerHTML = '<div style="color: red;">❌ Service Worker not supported</div>';
+                }
+            } catch (error) {
+                addLog(`❌ Error registering service worker: ${error.message}`);
+                testStatus.innerHTML = `<div style="color: red;">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testFCM() {
+            addLog('🔥 Testing FCM token generation...');
+
+            try {
+                // Check if Firebase is available
+                if (!window.firebase) {
+                    addLog('❌ Firebase not loaded. Make sure you are on the test-fcm page.');
+                    testStatus.innerHTML = '<div style="color: orange;">⚠️ Use the <a href="/test-fcm">Test FCM Page</a> for full FCM testing.</div>';
+                    return;
+                }
+
+                addLog('✅ Firebase available');
+                testStatus.innerHTML = '<div style="color: green;">✅ Firebase loaded successfully!</div>';
+
+            } catch (error) {
+                addLog(`❌ Error testing FCM: ${error.message}`);
+                testStatus.innerHTML = `<div style="color: red;">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', () => {
+            addLog('🦁 Brave Browser FCM Setup Guide loaded');
+            addLog('📍 Current URL: ' + window.location.href);
+            checkBrowserSupport();
+        });
+    </script>
+</body>
+</html>

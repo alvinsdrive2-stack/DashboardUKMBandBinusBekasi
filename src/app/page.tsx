@@ -14,7 +14,29 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+useEffect(() => {
+  if (!isClient) return;
 
+  // 🔔 Daftarkan Service Worker untuk background push
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then(() => console.log("✅ Service Worker registered"))
+      .catch((err) => console.error("❌ SW registration failed:", err));
+  }
+
+  // 🔥 Ambil FCM token dari browser (dynamic import)
+  import("@/firebase/client").then(({ requestForToken }) => {
+    requestForToken()
+      .then((token) => {
+        if (token) {
+          console.log("FCM Token:", token);
+          // bisa kirim token ke server-mu di sini
+        }
+      })
+      .catch((err) => console.error("Error getting FCM token:", err));
+  }).catch((err) => console.error("Error importing Firebase client:", err));
+}, [isClient]);
   useEffect(() => {
     if (!isClient || status === 'loading') return;
 
