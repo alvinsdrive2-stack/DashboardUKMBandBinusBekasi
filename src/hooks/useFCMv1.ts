@@ -42,10 +42,11 @@ export function useFCMv1() {
       setPermission(Notification.permission);
     }
 
-    // Listen for foreground messages (API V1)
+    // Listen for foreground messages (API V1) - DISABLED to prevent duplicate notifications
     if (typeof window !== 'undefined') {
       import('@/lib/firebase').then(({ onForegroundMessage }) => {
-        onForegroundMessage();
+        console.log('📱 useFCMv1: onForegroundMessage disabled to prevent duplicates');
+        // onForegroundMessage(); // DISABLED - let service worker handle notifications
       }).catch(() => {
         console.log('Firebase not available');
       });

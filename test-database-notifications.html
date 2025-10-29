@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Database Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #45a049; }
+        .btn.secondary { background: #2196F3; }
+        .btn.secondary:hover { background: #1976D2; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 UKM Band Database Notification Test</h1>
+        <p>Test if all notifications are being inserted into the database for header display.</p>
+
+        <div id="status" class="status info">
+            Ready to test notifications. Make sure you're logged in to the application.
+        </div>
+
+        <div class="form-group">
+            <label for="eventTitle">Event Title:</label>
+            <input type="text" id="eventTitle" value="Test Event - Database Insertion" />
+        </div>
+
+        <div class="form-group">
+            <label for="eventDate">Event Date:</label>
+            <input type="datetime-local" id="eventDate" />
+        </div>
+
+        <div class="form-group">
+            <label for="eventLocation">Event Location:</label>
+            <input type="text" id="eventLocation" value="Test Location" />
+        </div>
+
+        <button class="btn" onclick="testEventCreation()">🎵 Test Event Creation (FCM + Database)</button>
+        <button class="btn secondary" onclick="checkDatabaseNotifications()">📊 Check Database Notifications</button>
+        <button class="btn secondary" onclick="clearResults()">🗑️ Clear Results</button>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Set default date to tomorrow
+        document.getElementById('eventDate').value = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+
+        async function testEventCreation() {
+            const statusEl = document.getElementById('status');
+            const resultEl = document.getElementById('result');
+
+            statusEl.className = 'status info';
+            statusEl.textContent = 'Creating test event...';
+            resultEl.style.display = 'none';
+
+            try {
+                const eventData = {
+                    title: document.getElementById('eventTitle').value,
+                    description: 'Test event for database notification verification',
+                    date: document.getElementById('eventDate').value,
+                    location: document.getElementById('eventLocation').value,
+                    slotConfigurable: false,
+                    slotConfiguration: null
+                };
+
+                console.log('🎵 Creating test event:', eventData);
+
+                const response = await fetch('/api/events/manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✅ Event created successfully! Check for notifications...';
+
+                    resultEl.className = 'result success';
+                    resultEl.style.display = 'block';
+                    resultEl.textContent = `Event Created Successfully! 🎉
+
+Event Details:
+- Title: ${data.event.title}
+- ID: ${data.event.id}
+- Date: ${new Date(data.event.date).toLocaleString()}
+- Location: ${data.event.location}
+
+Notifications should now be:
+1. ✅ Sent via FCM to all users with active tokens
+2. 💾 Inserted into database for header display
+
+Check the browser notifications and the header notification bell!`;
+
+                    // Check database after a short delay
+                    setTimeout(checkDatabaseNotifications, 2000);
+
+                } else {
+                    throw new Error(data.error || 'Failed to create event');
+                }
+
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Error creating event';
+
+                resultEl.className = 'result error';
+                resultEl.style.display = 'block';
+                resultEl.textContent = `Error: ${error.message}
+
+This might be because:
+- You're not logged in as a manager
+- Session expired
+- Server error
+
+Check the browser console for more details.`;
+            }
+        }
+
+        async function checkDatabaseNotifications() {
+            const statusEl = document.getElementById('status');
+            const resultEl = document.getElementById('result');
+
+            statusEl.className = 'status info';
+            statusEl.textContent = 'Checking database notifications...';
+
+            try {
+                const response = await fetch('/api/notifications?limit=20');
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = `Found ${data.notifications.length} notifications in database`;
+
+                    const notificationList = data.notifications.map((notif, index) => {
+                        return `${index + 1}. ${notif.title}
+   Message: ${notif.message}
+   Type: ${notif.type}
+   Read: ${notif.isRead ? 'Yes' : 'No'}
+   Created: ${new Date(notif.createdAt).toLocaleString()}
+   ---`;
+                    }).join('\n');
+
+                    resultEl.className = 'result success';
+                    resultEl.style.display = 'block';
+                    resultEl.textContent = `📊 Database Notifications Found (${data.notifications.length}):
+
+${notificationList}
+
+💡 If you see "🎵 Acara Baru UKM Band!" notifications above, it means:
+✅ FCM notifications were sent
+✅ Database notifications were inserted for header display
+✅ All notification systems are working correctly!`;
+
+                } else {
+                    throw new Error(data.error || 'Failed to fetch notifications');
+                }
+
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Error checking notifications';
+
+                resultEl.className = 'result error';
+                resultEl.style.display = 'block';
+                resultEl.textContent = `Error checking notifications: ${error.message}
+
+Make sure you're logged in to the application.`;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('status').className = 'status info';
+            document.getElementById('status').textContent = 'Ready to test notifications. Make sure you\'re logged in to the application.';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        // Auto-check notifications on page load
+        window.addEventListener('load', () => {
+            setTimeout(checkDatabaseNotifications, 1000);
+        });
+    </script>
+</body>
+</html>

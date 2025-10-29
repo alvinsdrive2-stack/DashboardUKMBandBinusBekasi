@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Background Notifications (PWA Closed)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #45a049; }
+        .btn.secondary { background: #2196F3; }
+        .btn.secondary:hover { background: #1976D2; }
+        .btn.danger { background: #f44336; }
+        .btn.danger:hover { background: #d32f2f; }
+        .btn.warning { background: #ff9800; }
+        .btn.warning:hover { background: #f57c00; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .critical {
+            background: #ffeaa7;
+            border: 3px solid #f39c12;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #e8f5e8;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .step-number {
+            background: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .highlight {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 10px 0;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 5px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Test Background Notifications (PWA Closed)</h1>
+        <p>Test if notifications work when PWA app is completely closed.</p>
+
+        <div class="critical">
+            <h3>⚠️ CRITICAL TEST FOR PWA EXPERIENCE</h3>
+            <p><strong>This test verifies if users receive notifications when the app is closed.</strong></p>
+            <p>Notifications should appear in system notification drawer even when browser is closed.</p>
+        </div>
+
+        <div id="status" class="status info">
+            Ready to test background notifications.
+        </div>
+
+        <h3>🎯 Test Scenarios</h3>
+
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>Setup & Subscribe</strong>
+            <button class="btn" onclick="checkAndSubscribe()">🔔 Check & Subscribe to FCM</button>
+            <button class="btn secondary" onclick="checkServiceWorker()">🔍 Check Service Worker</button>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>Send Test Notification</strong>
+            <button class="btn warning" onclick="sendBackgroundTest()">🎯 Send Background Test</button>
+            <button class="btn secondary" onclick="sendDelayedNotification()">⏰ Send in 30 seconds</button>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>CLOSE BROWSER TAB</strong>
+            <div class="highlight">
+                <p>📱 <strong>IMPORTANT:</strong> After sending notification:</p>
+                <ol>
+                    <li>Close this browser tab completely</li>
+                    <li>Wait for notification (should appear in system drawer)</li>
+                    <li>Click notification to verify it opens production PWA</li>
+                </ol>
+            </div>
+        </div>
+
+        <h3>🧪 Additional Tests</h3>
+        <button class="btn secondary" onclick="testDirectFCM()">🚀 Direct FCM Test</button>
+        <button class="btn secondary" onclick="testDatabaseNotification()">💾 Database Notification Test</button>
+        <button class="btn danger" onclick="clearResults()">🗑️ Clear Results</button>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+
+        function showResult(content, type = 'info') {
+            const resultEl = document.getElementById('result');
+            resultEl.className = `result ${type}`;
+            resultEl.style.display = 'block';
+            resultEl.textContent = content;
+        }
+
+        async function checkServiceWorker() {
+            updateStatus('Checking service worker...', 'info');
+
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                console.log('Service Worker registrations:', registrations);
+
+                const firebaseSW = registrations.find(reg =>
+                    reg.scope.includes('localhost:3000') && reg.active
+                );
+
+                if (firebaseSW) {
+                    updateStatus('✅ Firebase Service Worker is active', 'success');
+                    showResult(`✅ Firebase Service Worker Status\n\nScope: ${firebaseSW.scope}\nActive: ${firebaseSW.active ? 'Yes' : 'No'}\nState: ${firebaseSW.active?.state}\n\n✅ Background notifications should work when app is closed!`);
+                } else {
+                    updateStatus('❌ Firebase Service Worker not found', 'error');
+                    showResult('❌ Service Worker Issues\n\nFirebase Service Worker not found.\nThis means background notifications may not work.\n\nTry refreshing the page to register the service worker.');
+                }
+            } else {
+                updateStatus('❌ Service Workers not supported', 'error');
+                showResult('❌ Service Workers Not Supported\n\nYour browser does not support service workers.\nBackground notifications require service workers.');
+            }
+        }
+
+        async function checkAndSubscribe() {
+            updateStatus('Checking subscription status...', 'info');
+
+            try {
+                // Check notification permission
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    updateStatus('❌ Notification permission denied', 'error');
+                    showResult('❌ Notification Permission Required\n\nBackground notifications require permission.\nClick the 🔔 icon in your browser and "Allow" notifications.');
+                    return;
+                }
+
+                // Subscribe to FCM
+                const response = await fetch('/api/fcm/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ FCM Subscription successful', 'success');
+                    showResult(`✅ FCM Subscription Ready!\n\nUser ID: ${data.userId}\nToken: ${data.fcmToken.substring(0, 50)}...\n\n🎯 You can now send background notifications!`);
+                } else {
+                    throw new Error(data.error || 'Failed to subscribe');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Subscription failed', 'error');
+                showResult(`❌ Subscription Failed\n\nError: ${error.message}\n\nMake sure you are logged in to the application.`);
+            }
+        }
+
+        async function sendBackgroundTest() {
+            updateStatus('Sending background test notification...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '🔔 BACKGROUND TEST',
+                        body: 'This notification should appear even if browser is closed!',
+                        actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                        data: {
+                            type: 'BACKGROUND_TEST',
+                            actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                            test: 'background',
+                            timestamp: new Date().toISOString()
+                        },
+                        tag: `background-test-${Date.now()}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ Background test sent! CLOSE THE BROWSER NOW!', 'success');
+
+                    let resultText = `🎯 BACKGROUND NOTIFICATION SENT!\n\n📱 NEXT STEPS:\n1. ✅ CLOSE this browser tab completely\n2. ⏳ Wait 10-30 seconds\n3. 🔔 Check system notification drawer\n4. 🎯 Click notification to test opening\n\nResults:\n`;
+
+                    if (data.results) {
+                        data.results.forEach((result, index) => {
+                            resultText += `${index + 1}. ${result.status}\n`;
+                        });
+                    }
+
+                    resultText += `\n💡 The notification should appear in your system's notification drawer even with the browser closed!`;
+
+                    showResult(resultText);
+                } else {
+                    throw new Error(data.error || 'Failed to send test');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Failed to send background test', 'error');
+                showResult(`❌ Background Test Failed\n\nError: ${error.message}\n\nMake sure:\n1. You are logged in\n2. FCM subscription is active\n3. Service worker is registered`);
+            }
+        }
+
+        async function sendDelayedNotification() {
+            updateStatus('Scheduling delayed notification (30 seconds)...', 'info');
+
+            // Show countdown
+            let countdown = 30;
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                updateStatus(`Sending notification in ${countdown} seconds... CLOSE BROWSER NOW!`, 'warning');
+            }, 1000);
+
+            setTimeout(async () => {
+                clearInterval(countdownInterval);
+                await sendBackgroundTest();
+            }, 30000);
+
+            showResult(`⏰ DELAYED NOTIFICATION SCHEDULED\n\nTime: 30 seconds from now\n\n🎯 IMPORTANT:\n1. CLOSE this browser tab now\n2. Wait for the notification\n3. Should appear in system drawer\n\nThis tests true background delivery!`);
+        }
+
+        async function testDirectFCM() {
+            updateStatus('Testing direct FCM background message...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '🚀 DIRECT FCM BACKGROUND',
+                        body: 'Testing FCM service worker background handling',
+                        actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                        data: {
+                            type: 'DIRECT_FCM_BACKGROUND',
+                            actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                            test: 'direct-fcm-background',
+                            requireInteraction: 'false'
+                        },
+                        tag: `direct-fcm-${Date.now()}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ Direct FCM test sent! Close browser to test background', 'success');
+                    showResult(`🚀 Direct FCM Test Sent!\n\nThis tests the Firebase messaging.onBackgroundMessage() handler.\n\n📱 Close browser and wait for notification in system drawer.\n\nShould trigger: messaging.onBackgroundMessage() in service worker`);
+                } else {
+                    throw new Error(data.error || 'Failed to send direct FCM');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Direct FCM test failed', 'error');
+                showResult(`❌ Direct FCM Test Failed\n\nError: ${error.message}`);
+            }
+        }
+
+        async function testDatabaseNotification() {
+            updateStatus('Testing database notification with background...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '💾 DATABASE BACKGROUND TEST',
+                        body: 'Database + FCM background notification test',
+                        actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                        data: {
+                            type: 'DATABASE_BACKGROUND_TEST',
+                            actionUrl: 'https://ukmbandbinusbekasi.vercel.app/dashboard/member',
+                            saveToDatabase: 'true',
+                            test: 'database-background'
+                        },
+                        tag: `db-bg-${Date.now()}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ Database background test sent!', 'success');
+                    showResult(`💾 Database Background Test Sent!\n\nThis tests:\n1. FCM notification delivery\n2. Database record creation\n3. Background service worker handling\n\n📱 Close browser and check system notification drawer`);
+                } else {
+                    throw new Error(data.error || 'Failed to send database test');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Database background test failed', 'error');
+                showResult(`❌ Database Background Test Failed\n\nError: ${error.message}`);
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('status').className = 'status info';
+            document.getElementById('status').textContent = 'Ready to test background notifications.';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', async () => {
+            console.log('🔔 Background Notification Test Page Loaded');
+            await checkServiceWorker();
+            await checkAndSubscribe();
+        });
+    </script>
+</body>
+</html>

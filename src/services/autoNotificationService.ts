@@ -39,6 +39,14 @@ export class AutoNotificationService {
         userTokens.get(sub.userId)!.push(sub.token);
       });
 
+      // Production URL for PWA direct access
+      const productionBaseUrl = 'https://ukmbandbinusbekasi.vercel.app';
+      const fullActionUrl = data.actionUrl && data.actionUrl.startsWith('http')
+        ? data.actionUrl
+        : data.actionUrl
+          ? `${productionBaseUrl}${data.actionUrl}`
+          : `${productionBaseUrl}/dashboard/member`;
+
       // Prepare FCM message
       const message = {
         notification: {
@@ -47,18 +55,18 @@ export class AutoNotificationService {
           icon: '/icons/favicon.png',
           badge: '/icons/favicon.png',
           tag: `${data.type}-${Date.now()}`,
-          clickAction: data.actionUrl || '/dashboard/member'
+          clickAction: fullActionUrl
         },
         data: {
           type: data.type,
           eventId: data.eventId,
           songId: data.songId,
-          actionUrl: data.actionUrl || '/dashboard/member',
+          actionUrl: fullActionUrl,
           timestamp: new Date().toISOString()
         },
         webpush: {
           fcmOptions: {
-            link: data.actionUrl || '/dashboard/member'
+            link: fullActionUrl
           }
         }
       };
@@ -106,68 +114,8 @@ export class AutoNotificationService {
     }
   }
 
-  // 1. Notifikasi untuk Event Baru
+  // 1. Notifikasi untuk Event Baru - UKM Band Integration
   static async notifyNewEvent(eventId: string): Promise<void> {
-    try {
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        include: {
-          submittedBy: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
-        }
-      });
-
-      if (!event) return;
-
-      // Get all active users untuk notifikasi event baru
-      const users = await prisma.user.findMany({
-        where: {
-          organizationLvl: {
-            in: ['TALENT', 'SPECTA']
-          },
-          isActive: true
-        },
-        select: { id: true }
-      });
-
-      const targetUserIds = users.map(u => u.id);
-
-      const eventDate = new Date(event.date).toLocaleDateString('id-ID', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      await this.sendFCMNotification({
-        type: 'EVENT_CREATED',
-        title: '🎵 Event Baru Ditambahkan!',
-        message: `${event.title} telah ditambahkan pada ${eventDate}. Daftar sekarang!`,
-        targetUserIds,
-        eventId: event.id,
-        actionUrl: `/events/member?eventId=${event.id}`
-      });
-
-      // Simpan notifikasi ke database
-      await this.saveNotifications(targetUserIds, {
-        title: '🎵 Event Baru Ditambahkan!',
-        message: `${event.title} telah ditambahkan pada ${eventDate}. Daftar sekarang!`,
-        type: 'EVENT_NEW',
-        eventId: event.id,
-        actionUrl: `/events/member?eventId=${event.id}`
-      });
-
-    } catch (error) {
-      console.error('Error notifying new event:', error);
-    }
-  }
-
-  // 2. Notifikasi untuk Member Baru Join Event
-  static async notifyMemberJoinedEvent(eventId: string, newMemberName: string): Promise<void> {
     try {
       const event = await prisma.event.findUnique({
         where: { id: eventId }
@@ -175,55 +123,62 @@ export class AutoNotificationService {
 
       if (!event) return;
 
-      // Get existing approved members
-      const existingMembers = await prisma.eventPersonnel.findMany({
-        where: {
-          eventId,
-          status: 'APPROVED'
-        },
-        include: {
-          user: {
-            select: { id: true }
-          }
-        }
+      console.log(`🎵 AutoNotificationService: Notifying new event: ${event.title}`);
+
+      // Use NEW UKM Band notification service
+      const { ukmBandNotificationService } = await import('./ukmBandNotificationService');
+
+      // Send to ALL members (including inactive) for event creation
+      await ukmBandNotificationService.notifyEventCreation({
+        userIds: [], // Empty array, service will get all members
+        eventId: eventId,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventLocation: event.location,
+        sendToAllMembers: true // Send to ALL members
       });
 
-      const targetUserIds = existingMembers.map(em => em.userId);
+      console.log(`✅ UKM Band notifications sent for new event: ${event.title}`);
 
-      if (targetUserIds.length === 0) return;
+    } catch (error) {
+      console.error('Error notifying new event:', error);
+    }
+  }
 
-      await this.sendFCMNotification({
-        type: 'MEMBER_JOINED_EVENT',
-        title: '👋 Member Baru Bergabung!',
-        message: `${newMemberName} telah bergabung dengan event ${event.title}`,
-        targetUserIds,
-        eventId: event.id,
-        actionUrl: `/events/member?eventId=${event.id}`
+  // 2. Notifikasi untuk Member Baru Join Event - UKM Band Integration
+  static async notifyMemberJoinedEvent(eventId: string, newMemberName: string, memberRole?: string): Promise<void> {
+    try {
+      console.log(`👥 AutoNotificationService: Notifying member join event: ${newMemberName} as ${memberRole || 'Member'}`);
+
+      // Use NEW UKM Band notification service for targeted notifications
+      const { ukmBandNotificationService } = await import('./ukmBandNotificationService');
+
+      // Send to existing event members only (targeted notification)
+      await ukmBandNotificationService.notifyMemberJoinEvent({
+        eventId: eventId,
+        newMemberName: newMemberName,
+        memberRole: memberRole || 'Member',
+        existingMemberIds: undefined, // Let service auto-detect existing members
+        newMemberId: undefined
       });
 
-      // Simpan notifikasi ke database
-      await this.saveNotifications(targetUserIds, {
-        title: '👋 Member Baru Bergabung!',
-        message: `${newMemberName} telah bergabung dengan event ${event.title}`,
-        type: 'EVENT_MEMBER_JOINED',
-        eventId: event.id,
-        actionUrl: `/events/member?eventId=${event.id}`
-      });
+      console.log(`✅ Targeted member join event notifications sent for: ${newMemberName}`);
 
     } catch (error) {
       console.error('Error notifying member joined event:', error);
     }
   }
 
-  // 3. Notifikasi untuk Lagu Baru Ditambahkan
+  // 3. Notifikasi untuk Lagu Baru Ditambahkan - UKM Band Integration
   static async notifySongAdded(songId: string, songTitle: string, eventId?: string): Promise<void> {
     try {
-      let targetUserIds: string[] = [];
-      let actionUrl = '/songs';
-      let eventName = '';
+      console.log(`🎶 AutoNotificationService: Notifying song added: ${songTitle}`);
+
+      // Use NEW UKM Band notification service
+      const { ukmBandNotificationService } = await import('./ukmBandNotificationService');
 
       if (eventId) {
-        // Notifikasi ke member event saja
+        // If event-specific, get event members only
         const eventMembers = await prisma.eventPersonnel.findMany({
           where: {
             eventId,
@@ -236,53 +191,32 @@ export class AutoNotificationService {
           }
         });
 
-        targetUserIds = eventMembers.map(em => em.userId);
+        const targetUserIds = eventMembers.map(em => em.userId);
 
-        const event = await prisma.event.findUnique({
-          where: { id: eventId }
+        if (targetUserIds.length === 0) return;
+
+        await ukmBandNotificationService.notifySongAddition({
+          userIds: targetUserIds,
+          songTitle,
+          artist: 'Unknown Artist', // Will be overridden if needed
+          addedBy: 'Music Director',
+          difficulty: 'Medium'
         });
 
-        if (event) {
-          eventName = ` di event ${event.title}`;
-          actionUrl = `/events/member?eventId=${eventId}#songs`;
-        }
+        console.log(`✅ Song addition notifications sent to ${targetUserIds.length} event members`);
+
       } else {
-        // Notifikasi ke semua users
-        const users = await prisma.user.findMany({
-          where: {
-            organizationLvl: {
-              in: ['TALENT', 'SPECTA']
-            },
-            isActive: true
-          },
-          select: { id: true }
+        // If not event-specific, send to TEAM members only
+        await ukmBandNotificationService.notifySongAddition({
+          userIds: [], // Empty array, service will get team members
+          songTitle,
+          artist: 'Unknown Artist', // Will be overridden if needed
+          addedBy: 'Music Director',
+          difficulty: 'Medium'
         });
 
-        targetUserIds = users.map(u => u.id);
-        actionUrl = '/songs';
+        console.log(`✅ Song addition notifications sent to TEAM members only`);
       }
-
-      if (targetUserIds.length === 0) return;
-
-      await this.sendFCMNotification({
-        type: 'SONG_ADDED',
-        title: '🎶 Lagu Baru Ditambahkan!',
-        message: `"${songTitle}" telah ditambahkan${eventName}`,
-        targetUserIds,
-        songId,
-        eventId,
-        actionUrl
-      });
-
-      // Simpan notifikasi ke database
-      await this.saveNotifications(targetUserIds, {
-        title: '🎶 Lagu Baru Ditambahkan!',
-        message: `"${songTitle}" telah ditambahkan${eventName}`,
-        type: 'SONG_NEW',
-        songId,
-        eventId,
-        actionUrl
-      });
 
     } catch (error) {
       console.error('Error notifying song added:', error);

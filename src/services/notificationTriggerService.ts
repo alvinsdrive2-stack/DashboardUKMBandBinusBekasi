@@ -59,9 +59,21 @@ export class NotificationTriggerService {
       });
 
       // Send real-time WebSocket notification
+      console.log('🔍 [NotificationTriggerService] About to send real-time notification');
       await this.sendRealTimeNotification(notification);
 
       // Send push notification if enabled
+      console.log('🔍 [NotificationTriggerService] About to send push notification');
+      console.log('🔍 [NotificationTriggerService] Notification data:', {
+        title: notification.title,
+        type: notification.type,
+        debug: notification.data?.debug
+      });
+
+      console.log('✅ [NotificationTriggerService] FIXED - Single trigger only');
+      console.log('   1. Real-time notification via WebSocket');
+      console.log('   2. Push notification via FCM API');
+
       await this.sendPushNotification(notification);
 
       return notification;
@@ -319,22 +331,20 @@ export class NotificationTriggerService {
     return admins.map(admin => admin.id);
   }
 
-  // Send real-time notification via WebSocket
+  // Send real-time notification via WebSocket - DISABLED
+  // Using only FCM notifications to prevent duplicates
   private async sendRealTimeNotification(notification: any) {
     try {
-      // This will be called from the server-side
-      // We'll use a global io instance or emit through the API route
-      console.log('Sending real-time notification:', notification);
+      // 🔥 DISABLED - Prevent duplicate notifications via WebSocket
+      // FCM notifications are sufficient for real-time delivery
+      console.log('🚫 sendRealTimeNotification DISABLED - using FCM only');
+      console.log('🚫 Would have sent WebSocket notification:', notification.title);
 
-      // In a real implementation, you would:
-      // 1. Have access to the Socket.IO server instance
-      // 2. Emit to specific user rooms
-      // 3. Emit to admin rooms if needed
-      // 4. Emit to event rooms if needed
+      // Original code disabled to prevent duplicate notifications:
+      // - FCM Service Worker handles notification delivery
+      // - No need for WebSocket + client-side notification duplication
 
-      // For now, we'll emit through an API endpoint
-      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-
+      /*
       await fetch(`${baseUrl}/api/notifications/emit`, {
         method: 'POST',
         headers: {
@@ -347,9 +357,10 @@ export class NotificationTriggerService {
           eventId: notification.eventId
         })
       });
+      */
 
     } catch (error) {
-      console.error('Error sending real-time notification:', error);
+      console.error('Error in disabled sendRealTimeNotification:', error);
     }
   }
 

@@ -53,10 +53,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
         setUnreadCount(prev => prev + 1);
       }
 
-      // Show browser notification if supported
-      showNotification(notification.title, {
-        body: notification.message
-      });
+      // 🔥 DISABLED - Keep only FCM Service Worker notifications
+      console.log('🚫 [SocketContext] Disabled - FCM Service Worker will handle notifications');
+      console.log(`🚫 Would have created: ${notification.title} - ${notification.message}`);
+
+      // FCM Service Worker will show the notification with proper icon
+      // No need for duplicate client-side notifications
     };
 
     // Listen for notification read events

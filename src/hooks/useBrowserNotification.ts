@@ -43,11 +43,19 @@ export function useBrowserNotification() {
     }
 
     try {
-      return new Notification(title, {
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/badge-72x72.png',
-        ...options
-      });
+      // 🔥 DISABLED - Preventing duplicate client-side notifications
+      // All notifications should be handled by Firebase service worker only
+      console.log('🚫 Browser notification DISABLED to prevent duplicates');
+      console.log(`🚫 Would have created: ${title}`);
+      console.log(`🚫 Options:`, options);
+      return null;
+
+      // ORIGINAL CODE DISABLED:
+      // return new Notification(title, {
+      //   icon: '/icons/icon-192x192.png',
+      //   badge: '/icons/badge-72x72.png',
+      //   ...options
+      // });
     } catch (error) {
       console.error('Error showing notification:', error);
       return null;

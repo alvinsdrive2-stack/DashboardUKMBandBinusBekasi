@@ -69,26 +69,14 @@ export function usePushNotification() {
       }));
 
       if (isSupported) {
-        // Register the push service worker
-        registerPushServiceWorker();
-        // Check existing subscription
+        console.log('🚫 [usePushNotification] Auto-registration DISABLED to prevent duplicate service workers');
+        console.log('🚫 [usePushNotification] Use Firebase service worker instead');
+
+        // Only check existing subscription, don't register new one
         checkExistingSubscription();
 
-        // Auto-request permission on first load if not yet requested
-        if (Notification.permission === 'default') {
-          console.log('🔔 Requesting notification permission on first load...');
-          const granted = await requestPermission();
-
-          // Auto-subscribe if permission granted and not already subscribed
-          if (granted && !state.isSubscribed) {
-            console.log('🔔 Permission granted, auto-subscribing to push notifications...');
-            setTimeout(() => subscribe(), 1000); // Delay 1 second to ensure everything is ready
-          }
-        } else if (Notification.permission === 'granted' && !state.isSubscribed) {
-          // Auto-subscribe if permission already granted but not subscribed
-          console.log('🔔 Permission already granted, auto-subscribing to push notifications...');
-          setTimeout(() => subscribe(), 1000);
-        }
+        // DO NOT auto-request permission or auto-subscribe
+        // This prevents duplicate service workers (firebase-messaging-sw vs sw-push)
       }
     };
 
@@ -98,15 +86,20 @@ export function usePushNotification() {
   }, [status, requestPermission, state.isSubscribed]);
 
   const registerPushServiceWorker = async () => {
+    // 🔥 DISABLED - Use Firebase service worker instead
+    console.log('🚫 Push Service Worker registration DISABLED to prevent conflicts with Firebase');
+    console.log('🚫 Using Firebase messaging service worker instead');
+
+    // Return Firebase service worker registration
     try {
-      const registration = await navigator.serviceWorker.register('/sw-push.js');
-      console.log('✅ Push Service Worker registered:', registration);
+      const registration = await navigator.serviceWorker.ready;
+      console.log('✅ Using existing Firebase Service Worker:', registration.scope);
       return registration;
     } catch (error) {
-      console.error('❌ Error registering push service worker:', error);
+      console.error('❌ Error getting Firebase service worker:', error);
       setState(prev => ({
         ...prev,
-        error: 'Failed to register push service worker',
+        error: 'Firebase service worker not available',
       }));
       return null;
     }
@@ -155,15 +148,14 @@ export function usePushNotification() {
 
       setState(prev => ({ ...prev, permission }));
 
-      // Get service worker registration
+      // Get Firebase service worker registration
       let registration;
       try {
         registration = await navigator.serviceWorker.ready;
+        console.log('✅ Using Firebase Service Worker registration');
       } catch (error) {
-        console.log('🔄 Service worker not ready, registering...');
-        registration = await navigator.serviceWorker.register('/sw-push.js');
-        await navigator.serviceWorker.ready;
-        registration = await navigator.serviceWorker.ready;
+        console.error('❌ Firebase service worker not available:', error);
+        throw new Error('Firebase service worker not ready. Please refresh the page.');
       }
 
       // Check if already subscribed
@@ -353,11 +345,18 @@ export function usePushNotification() {
     }
 
     try {
-      new Notification(title, {
-        icon: '/icons/favicon.png',
-        badge: '/icons/favicon.png',
-        ...options,
-      });
+      // 🔥 DISABLED - Preventing duplicate client-side notifications
+      // All notifications should be handled by Firebase service worker only
+      console.log('🚫 Push notification local show DISABLED to prevent duplicates');
+      console.log(`🚫 Would have created: ${title}`);
+      console.log(`🚫 Options:`, options);
+
+      // ORIGINAL CODE DISABLED:
+      // new Notification(title, {
+      //   icon: '/icons/favicon.png',
+      //   badge: '/icons/favicon.png',
+      //   ...options,
+      // });
     } catch (error) {
       console.error('❌ Error showing local notification:', error);
     }

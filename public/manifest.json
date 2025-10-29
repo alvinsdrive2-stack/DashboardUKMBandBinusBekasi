@@ -116,5 +116,12 @@
       ]
     }
   },
-  "gcm_sender_id": "317047973293"
+  "gcm_sender_id": "317047973293",
+  "background_sync": {
+    "enabled": true
+  },
+  "periodic_sync": {
+    "enabled": true,
+    "min_interval": 3600
+  }
 }

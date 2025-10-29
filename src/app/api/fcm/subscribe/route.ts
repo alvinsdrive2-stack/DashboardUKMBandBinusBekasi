@@ -13,6 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`📱 FCM Subscribe Request:`);
+    console.log(`- User ID: ${userId}`);
+    console.log(`- FCM Token: ${fcmToken.substring(0, 50)}...`);
+    console.log(`- Device Info:`, deviceInfo);
+
     // Check if token already exists for this user
     const existingSubscription = await prisma.fCMSubscription.findFirst({
       where: {
@@ -22,17 +27,46 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingSubscription) {
+      console.log(`🔄 Updating existing subscription: ${existingSubscription.id}`);
       // Update existing subscription
       await prisma.fCMSubscription.update({
         where: { id: existingSubscription.id },
         data: {
           deviceInfo: deviceInfo || {},
+          isActive: true,
           updatedAt: new Date()
         }
       });
+
+      return NextResponse.json({
+        success: true,
+        message: 'FCM subscription updated successfully',
+        subscriptionId: existingSubscription.id,
+        action: 'updated'
+      });
     } else {
+      // Check if token exists for another user (handle shared device case)
+      const tokenOwnedByOtherUser = await prisma.fCMSubscription.findFirst({
+        where: {
+          token: fcmToken,
+          userId: { not: userId }
+        }
+      });
+
+      if (tokenOwnedByOtherUser) {
+        console.log(`⚠️ Token already owned by another user: ${tokenOwnedByOtherUser.userId}`);
+        console.log(`🔄 Deactivating old subscription and creating new one`);
+
+        // Deactivate the old subscription
+        await prisma.fCMSubscription.update({
+          where: { id: tokenOwnedByOtherUser.id },
+          data: { isActive: false }
+        });
+      }
+
+      console.log(`➕ Creating new subscription for user: ${userId}`);
       // Create new subscription
-      await prisma.fCMSubscription.create({
+      const newSubscription = await prisma.fCMSubscription.create({
         data: {
           userId,
           token: fcmToken,
@@ -40,15 +74,20 @@ export async function POST(request: NextRequest) {
           isActive: true
         }
       });
+
+      console.log(`✅ New subscription created: ${newSubscription.id}`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'FCM subscription created successfully',
+        subscriptionId: newSubscription.id,
+        action: 'created',
+        previousDeactivated: tokenOwnedByOtherUser?.id || null
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'FCM subscription saved successfully'
-    });
-
   } catch (error) {
-    console.error('Error saving FCM subscription:', error);
+    console.error('❌ Error saving FCM subscription:', error);
     return NextResponse.json(
       { error: 'Failed to save FCM subscription' },
       { status: 500 }

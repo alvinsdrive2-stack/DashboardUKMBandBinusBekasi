@@ -49,3 +49,4 @@ next-env.d.ts
 .env*.local
 
 certificatessrc/firebase/serviceAccount.json
+src/firebase/serviceAccount.json

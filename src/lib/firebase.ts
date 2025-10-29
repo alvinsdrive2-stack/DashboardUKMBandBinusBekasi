@@ -38,27 +38,60 @@ export const getFCMToken = async (): Promise<string | null> => {
 
     console.log('✅ Service Worker supported');
 
-    // Unregister existing service workers first
+    // Get all existing registrations
     const registrations = await navigator.serviceWorker.getRegistrations();
-    for (const reg of registrations) {
-      if (reg.scope.includes(window.location.origin)) {
-        console.log('🗑️ Unregistering existing service worker:', reg.scope);
+    console.log('📋 Existing service workers:', registrations.length);
+
+    // Find firebase-messaging-sw.js registrations
+    const firebaseSWRegistrations = registrations.filter(reg =>
+      reg.active && reg.active.scriptURL && reg.active.scriptURL.includes('firebase-messaging-sw.js')
+    );
+
+    console.log('📋 Firebase service workers found:', firebaseSWRegistrations.length);
+
+    // If there are duplicate firebase service workers, unregister all except one
+    if (firebaseSWRegistrations.length > 1) {
+      console.log('🚨 Found duplicate Firebase service workers, cleaning up...');
+
+      // Keep the first one, unregister the rest
+      const toKeep = firebaseSWRegistrations[0];
+      const toUnregister = firebaseSWRegistrations.slice(1);
+
+      console.log('📋 Keeping:', toKeep.active?.scriptURL);
+
+      for (const reg of toUnregister) {
+        console.log('🗑️ Unregistering duplicate Firebase service worker:', reg.active?.scriptURL);
         await reg.unregister();
       }
+
+      // Wait for unregistration to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Wait for a bit before registering new one
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Check if we have a valid firebase service worker
+    const hasValidFirebaseSW = registrations.some(reg =>
+      reg.active &&
+      reg.active.scriptURL &&
+      reg.active.scriptURL.includes('firebase-messaging-sw.js')
+    );
 
-    // Register service worker untuk FCM V1
-    console.log('🔧 Registering Firebase Service Worker...');
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-      scope: '/'
-    });
-    console.log('✅ Firebase Service Worker registered:', registration.scope);
+    let registration;
+    if (!hasValidFirebaseSW) {
+      console.log('🔧 No valid Firebase service worker found, registering new one...');
+      registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      });
+      console.log('✅ Firebase Service Worker registered:', registration.scope);
+    } else {
+      console.log('✅ Firebase Service Worker already active and valid');
+      // Get the existing registration
+      registration = await navigator.serviceWorker.ready;
+    }
 
     // Wait for service worker to be ready
-    await navigator.serviceWorker.ready;
+    if (!registration) {
+      registration = await navigator.serviceWorker.ready;
+    }
     console.log('✅ Service Worker is ready');
 
     // Check notification permission
@@ -119,26 +152,14 @@ export const getFCMToken = async (): Promise<string | null> => {
   }
 };
 
-// Listen for foreground messages
+// Listen for foreground messages (DISABLED - let service worker handle all notifications)
 export const onForegroundMessage = () => {
   onMessage(messaging, (payload) => {
-    console.log('Foreground message received:', payload);
-
-    if (payload.notification) {
-      // Show notification when app is in foreground
-      const notification = new Notification(payload.notification.title || 'UKM Band Dashboard', {
-        body: payload.notification.body || 'You have a new notification',
-        icon: payload.notification.icon || '/icons/favicon.png',
-        badge: '/icons/favicon.png',
-        tag: payload.notification.tag || 'fcm-foreground',
-        data: payload.data || {}
-      });
-
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 5000);
-    }
+    console.log('📱 [lib/firebase.ts] FCM Foreground message received (logging only):', payload);
+    console.log('📝 [lib/firebase.ts] Notification will be handled by service worker');
+    console.log('🕵️ [lib/firebase.ts] NOT creating client-side notification - DISABLED');
+    // DISABLED: No client-side notification creation - let service worker handle it
+    // const notification = new Notification(...) - REMOVED
   });
 };
 

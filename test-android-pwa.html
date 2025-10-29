@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android PWA Background Notifications Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #45a049; }
+        .btn.secondary { background: #2196F3; }
+        .btn.secondary:hover { background: #1976D2; }
+        .btn.danger { background: #f44336; }
+        .btn.danger:hover { background: #d32f2f; }
+        .btn.warning { background: #ff9800; }
+        .btn.warning:hover { background: #f57c00; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .critical {
+            background: #ffeaa7;
+            border: 3px solid #f39c12;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .android-section {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #4CAF50;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        .step-number {
+            background: #2196F3;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .feature-check {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .feature-check .icon {
+            font-size: 20px;
+            margin-right: 10px;
+            min-width: 30px;
+        }
+        .feature-check.supported { color: #4CAF50; }
+        .feature-check.not-supported { color: #f44336; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Android PWA Background Notifications Test</h1>
+        <p>Test if PWA notifications work on Android devices when the app is closed.</p>
+
+        <div class="critical">
+            <h3>🚨 ANDROID PWA TESTING GUIDE</h3>
+            <p><strong>For true Android testing:</strong></p>
+            <ol>
+                <li>Open this page on Android Chrome</li>
+                <li>Add to Home Screen (Install PWA)</li>
+                <li>Close Chrome completely</li>
+                <li>Send test notification from another device</li>
+                <li>Notification should appear in Android notification drawer</li>
+            </ol>
+        </div>
+
+        <div id="status" class="status info">
+            Ready to test Android PWA background notifications.
+        </div>
+
+        <h3>🔧 Feature Detection</h3>
+        <div id="feature-checks">
+            <div class="feature-check">
+                <span class="icon">🔍</span>
+                <span>Checking browser features...</span>
+            </div>
+        </div>
+
+        <h3>📱 Android PWA Setup</h3>
+        <div class="android-section">
+            <h4>Step 1: Install PWA</h4>
+            <button class="btn" onclick="installPWA()">📲 Install PWA</button>
+            <button class="btn secondary" onclick="checkPWAInstalled()">✅ Check PWA Status</button>
+
+            <h4>Step 2: Background Sync Registration</h4>
+            <button class="btn" onclick="registerBackgroundSync()">🔄 Register Background Sync</button>
+            <button class="btn secondary" onclick="registerPeriodicSync()">⏰ Register Periodic Sync</button>
+
+            <h4>Step 3: Notification Setup</h4>
+            <button class="btn warning" onclick="requestNotificationPermission()">🔔 Request Permission</button>
+            <button class="btn secondary" onclick="subscribeToPush()">📡 Subscribe to Push</button>
+        </div>
+
+        <h3>🧪 Test Scenarios</h3>
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>Immediate Test</strong>
+            <button class="btn" onclick="sendImmediateTest()">🎯 Send Immediate Test</button>
+            <button class="btn secondary" onclick="testServiceWorkerMessage()">🔧 Test Service Worker</button>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>Background Test</strong>
+            <button class="btn warning" onclick="sendDelayedNotification()">⏰ Send in 60 seconds</button>
+            <button class="btn secondary" onclick="closeAndTest()">🚪 Close & Test</button>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>Android Native Test</strong>
+            <button class="btn danger" onclick="testAndroidNotification()">📱 Android Notification Test</button>
+            <button class="btn secondary" onclick="testVibration()">📳 Test Vibration</button>
+        </div>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const PRODUCTION_URL = 'https://ukmbandbinusbekasi.vercel.app';
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+
+        function showResult(content, type = 'info') {
+            const resultEl = document.getElementById('result');
+            resultEl.className = `result ${type}`;
+            resultEl.style.display = 'block';
+            resultEl.textContent = content;
+        }
+
+        function checkFeatures() {
+            const features = [
+                { name: 'Service Worker', supported: 'serviceWorker' in navigator },
+                { name: 'Push API', supported: 'PushManager' in window },
+                { name: 'Notifications', supported: 'Notification' in window },
+                { name: 'Background Sync', supported: 'BackgroundSyncManager' in window },
+                { name: 'Periodic Background Sync', supported: 'periodicSync' in ServiceWorkerRegistration.prototype },
+                { name: 'Web App Manifest', supported: 'onbeforeinstallprompt' in window },
+                { name: 'Storage', supported: 'localStorage' in window },
+                { name: 'Vibration', supported: 'vibrate' in navigator }
+            ];
+
+            const container = document.getElementById('feature-checks');
+            container.innerHTML = features.map(feature => `
+                <div class="feature-check ${feature.supported ? 'supported' : 'not-supported'}">
+                    <span class="icon">${feature.supported ? '✅' : '❌'}</span>
+                    <strong>${feature.name}:</strong> ${feature.supported ? 'Supported' : 'Not Supported'}
+                </div>
+            `).join('');
+
+            const supportedCount = features.filter(f => f.supported).length;
+            updateStatus(`Browser Support: ${supportedCount}/${features.length} features supported`,
+                        supportedCount >= 6 ? 'success' : 'warning');
+        }
+
+        async function installPWA() {
+            updateStatus('Checking PWA installation...', 'info');
+
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    console.log('Service Worker registered:', registration);
+                    updateStatus('✅ Service Worker registered', 'success');
+                    showResult('✅ Service Worker Registered\n\nReady for PWA installation.\n\n📱 On Android:\n1. Tap menu (⋮)\n2. "Add to Home screen"\n3. "Install"\n4. Open from home screen');
+                } catch (error) {
+                    updateStatus('❌ Service Worker registration failed', 'error');
+                    showResult(`❌ Service Worker Error\n\n${error.message}`);
+                }
+            }
+        }
+
+        async function checkPWAInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            const isInWebAppiOS = (window.navigator as any).standalone === true;
+            const isInWebAppChrome = (window.navigator as any).webview;
+
+            updateStatus(isStandalone || isInWebAppiOS || isInWebAppChrome
+                ? '✅ PWA is installed'
+                : '⚠️ PWA not installed (running in browser)',
+                isStandalone || isInWebAppiOS || isInWebAppChrome ? 'success' : 'warning');
+
+            showResult(`PWA Status Check\n\nStandalone Mode: ${isStandalone}\niOS Standalone: ${isInWebAppiOS}\nChrome Webview: ${isInWebAppChrome}\n\n${isStandalone || isInWebAppiOS || isInWebAppChrome ? '✅ Running as installed PWA' : '⚠️ Running in browser mode'}`);
+        }
+
+        async function registerBackgroundSync() {
+            updateStatus('Registering background sync...', 'info');
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+
+                if ('sync' in registration) {
+                    await registration.sync.register('background-notification-sync');
+                    updateStatus('✅ Background sync registered', 'success');
+                    showResult('✅ Background Sync Registered\n\nService Worker will:\n- Check for pending notifications\n- Sync when network is available\n- Handle background processing');
+                } else {
+                    throw new Error('Background Sync API not supported');
+                }
+            } catch (error) {
+                updateStatus('❌ Background sync registration failed', 'error');
+                showResult(`❌ Background Sync Error\n\n${error.message}\n\nTry using a supported browser like Chrome on Android.`);
+            }
+        }
+
+        async function registerPeriodicSync() {
+            updateStatus('Registering periodic sync...', 'info');
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+
+                if ('periodicSync' in registration) {
+                    const status = await navigator.permissions.query({
+                        name: 'periodic-background-sync'
+                    });
+
+                    if (status.state === 'granted') {
+                        await registration.periodicSync.register('notification-check', {
+                            minInterval: 60 * 60 * 1000 // 1 hour
+                        });
+                        updateStatus('✅ Periodic sync registered', 'success');
+                        showResult('✅ Periodic Sync Registered\n\nWill check for notifications every hour\nEven when app is closed!');
+                    } else {
+                        throw new Error('Periodic background sync permission denied');
+                    }
+                } else {
+                    throw new Error('Periodic Background Sync API not supported');
+                }
+            } catch (error) {
+                updateStatus('❌ Periodic sync registration failed', 'error');
+                showResult(`❌ Periodic Sync Error\n\n${error.message}\n\nThis feature requires Chrome on Android.');
+            }
+        }
+
+        async function requestNotificationPermission() {
+            updateStatus('Requesting notification permission...', 'info');
+
+            try {
+                const permission = await Notification.requestPermission();
+
+                switch (permission) {
+                    case 'granted':
+                        updateStatus('✅ Notification permission granted', 'success');
+                        showResult('✅ Notification Permission Granted\n\nYou can now receive notifications!\n\nNext step: Subscribe to push notifications.');
+                        break;
+                    case 'denied':
+                        updateStatus('❌ Notification permission denied', 'error');
+                        showResult('❌ Notification Permission Denied\n\nTo enable:\n1. Click the 🔔 icon in your browser\n2. Set notifications to "Allow"\n3. Refresh this page');
+                        break;
+                    default:
+                        updateStatus('⏳ Notification permission pending', 'warning');
+                        showResult('⏳ Notification Permission Pending\n\nWaiting for user response...');
+                }
+            } catch (error) {
+                updateStatus('❌ Failed to request permission', 'error');
+                showResult(`❌ Permission Request Failed\n\n${error.message}`);
+            }
+        }
+
+        async function subscribeToPush() {
+            updateStatus('Subscribing to push notifications...', 'info');
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY')
+                });
+
+                // Send to server (this would normally use your real endpoint)
+                console.log('Push subscription:', subscription);
+                updateStatus('✅ Subscribed to push notifications', 'success');
+                showResult('✅ Push Subscription Created\n\nEndpoint: ' + subscription.endpoint.substring(0, 100) + '...\n\nReady to receive background notifications!');
+            } catch (error) {
+                updateStatus('❌ Push subscription failed', 'error');
+                showResult(`❌ Push Subscription Error\n\n${error.message}\n\nMake sure:\n1. Notification permission is granted\n2. Service Worker is registered\n3. VAPID keys are configured`);
+            }
+        }
+
+        async function sendImmediateTest() {
+            updateStatus('Sending immediate test notification...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: '📱 Android PWA Test',
+                        body: 'Immediate notification from Android PWA test',
+                        actionUrl: `${PRODUCTION_URL}/dashboard/member`,
+                        data: {
+                            type: 'ANDROID_PWA_TEST',
+                            source: 'android-test',
+                            timestamp: new Date().toISOString()
+                        },
+                        tag: `android-test-${Date.now()}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ Test notification sent!', 'success');
+                    showResult(`📱 Android PWA Test Sent!\n\n🔔 Check your notification drawer\n\nIf you don't see it:\n1. Make sure PWA is installed\n2. Check notification permission\n3. Try the background test below`);
+                } else {
+                    throw new Error(data.error || 'Failed to send test');
+                }
+            } catch (error) {
+                updateStatus('❌ Test notification failed', 'error');
+                showResult(`❌ Test Failed\n\n${error.message}\n\nMake sure you are logged in and have FCM subscription.`);
+            }
+        }
+
+        async function sendDelayedNotification() {
+            updateStatus('Scheduling delayed notification (60 seconds)...', 'warning');
+
+            let countdown = 60;
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                updateStatus(`Sending notification in ${countdown} seconds... CLOSE APP NOW!`, 'warning');
+            }, 1000);
+
+            setTimeout(async () => {
+                clearInterval(countdownInterval);
+                await sendImmediateTest();
+                updateStatus('✅ Delayed notification sent! Check notification drawer.', 'success');
+            }, 60000);
+
+            showResult(`⏰ DELAYED NOTIFICATION SCHEDULED\n\nTime: 60 seconds\n\n🎯 CRITICAL TEST:\n1. CLOSE this app completely\n2. Wait for notification\n3. Should appear in Android notification drawer\n4. Works even with Chrome closed!`);
+        }
+
+        async function closeAndTest() {
+            showResult(`🚪 CLOSE & TEST INSTRUCTIONS\n\n1. ✅ Send test notification first\n2. 🚪 CLOSE Chrome completely (swipe away from recent apps)\n3. ⏳ Wait 30-60 seconds\n4. 🔔 Check Android notification drawer\n5. 🎯 Click notification to open PWA\n\nThis tests true background capability!`);
+        }
+
+        async function testServiceWorkerMessage() {
+            updateStatus('Testing service worker message...', 'info');
+
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+
+                // Send message to service worker
+                registration.active?.postMessage({
+                    type: 'TEST_MESSAGE',
+                    data: {
+                        message: 'Hello from Android PWA test!',
+                        timestamp: new Date().toISOString()
+                    }
+                });
+
+                updateStatus('✅ Service worker message sent', 'success');
+                showResult('✅ Service Worker Test\n\nMessage sent to service worker.\n\nCheck browser console for service worker logs.');
+            }
+        }
+
+        async function testAndroidNotification() {
+            updateStatus('Sending Android-optimized notification...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: '📱 ANDROID PWA NOTIFICATION',
+                        body: 'This notification is optimized for Android PWA with vibration and actions',
+                        actionUrl: `${PRODUCTION_URL}/dashboard/member`,
+                        data: {
+                            type: 'ANDROID_NATIVE_TEST',
+                            vibration: '200,100,200',
+                            actions: JSON.stringify([
+                                { action: 'open', title: 'Open App' },
+                                { action: 'dismiss', title: 'Dismiss' }
+                            ]),
+                            source: 'android-native-test'
+                        },
+                        tag: `android-native-${Date.now()}`
+                    })
+                });
+
+                if (response.ok) {
+                    updateStatus('✅ Android notification sent!', 'success');
+                    showResult(`📱 Android Native Notification Sent!\n\nFeatures:\n✅ Vibration pattern\n✅ Action buttons\n✅ Production URL direct access\n✅ Optimized for Android notification drawer\n\nCheck your Android notification drawer!`);
+                } else {
+                    throw new Error('Failed to send Android notification');
+                }
+            } catch (error) {
+                updateStatus('❌ Android notification failed', 'error');
+                showResult(`❌ Android Test Failed\n\n${error.message}`);
+            }
+        }
+
+        async function testVibration() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200]);
+                updateStatus('✅ Vibration test successful', 'success');
+                showResult('📳 Vibration Test\n\nYour device should have vibrated with pattern: 200ms on, 100ms off, 200ms on\n\nThis will be used with notifications on Android!');
+            } else {
+                updateStatus('❌ Vibration not supported', 'error');
+                showResult('❌ Vibration API not supported\n\nThis device doesn\'t support vibration for notifications.');
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+
+            return outputArray;
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('📱 Android PWA Test Page Loaded');
+            checkFeatures();
+            checkPWAInstalled();
+        });
+    </script>
+</body>
+</html>

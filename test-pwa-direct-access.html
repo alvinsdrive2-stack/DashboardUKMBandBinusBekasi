@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PWA Direct Access Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #45a049; }
+        .btn.secondary { background: #2196F3; }
+        .btn.secondary:hover { background: #1976D2; }
+        .btn.danger { background: #f44336; }
+        .btn.danger:hover { background: #d32f2f; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .highlight {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 10px 0;
+        }
+        .url-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test PWA Direct Access Notifications</h1>
+        <p>Test all notifications to ensure they open <strong>ukmbandbinusbekasi.vercel.app</strong> directly when clicked.</p>
+
+        <div class="highlight">
+            <strong>🎯 Production PWA URL:</strong>
+            <div class="url-display">https://ukmbandbinusbekasi.vercel.app</div>
+            <p>All notifications should open this URL directly when clicked, bypassing localhost.</p>
+        </div>
+
+        <div id="status" class="status info">
+            Ready to test PWA direct access notifications.
+        </div>
+
+        <h3>🧪 Quick Tests</h3>
+        <button class="btn" onclick="testSimpleNotification()">📢 Simple Test</button>
+        <button class="btn secondary" onclick="testEventNotification()">🎵 Event Test</button>
+        <button class="btn secondary" onclick="testPracticeReminder()">🎸 Practice Reminder</button>
+        <button class="btn danger" onclick="clearResults()">🗑️ Clear Results</button>
+
+        <h3>📋 Custom Notification Test</h3>
+        <div class="form-group">
+            <label for="customTitle">Notification Title:</label>
+            <input type="text" id="customTitle" value="🚀 PWA Direct Access Test" />
+        </div>
+        <div class="form-group">
+            <label for="customBody">Notification Body:</label>
+            <input type="text" id="customBody" value="Click this notification to open production PWA" />
+        </div>
+        <div class="form-group">
+            <label for="customActionUrl">Action URL (relative path):</label>
+            <input type="text" id="customActionUrl" value="/dashboard/member" />
+        </div>
+        <button class="btn" onclick="testCustomNotification()">🎯 Send Custom Notification</button>
+
+        <h3>🔧 Debug Options</h3>
+        <button class="btn secondary" onclick="checkServiceWorker()">🔍 Check Service Worker</button>
+        <button class="btn secondary" onclick="checkNotificationPermission()">🔔 Check Permission</button>
+        <button class="btn secondary" onclick="testProductionURL()">🌐 Test Production URL</button>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const PRODUCTION_BASE_URL = 'https://ukmbandbinusbekasi.vercel.app';
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+
+        function showResult(content, type = 'info') {
+            const resultEl = document.getElementById('result');
+            resultEl.className = `result ${type}`;
+            resultEl.style.display = 'block';
+            resultEl.textContent = content;
+        }
+
+        async function checkServiceWorker() {
+            updateStatus('Checking service worker...', 'info');
+
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                console.log('Service Worker registrations:', registrations);
+
+                if (registrations.length > 0) {
+                    updateStatus(`Found ${registrations.length} service worker(s)`, 'success');
+                    showResult(`✅ Service Workers Found (${registrations.length}):\n${
+                        registrations.map((reg, index) =>
+                            `${index + 1}. Scope: ${reg.scope}\n   Active: ${reg.active ? 'Yes' : 'No'}\n   State: ${reg.active?.state || 'Unknown'}`
+                        ).join('\n\n')
+                    }`);
+                } else {
+                    updateStatus('No service workers found', 'error');
+                    showResult('❌ No Service Workers Found\n\nThis means notifications may not work in the background.\nTry refreshing the page or checking if service workers are enabled.');
+                }
+            } else {
+                updateStatus('Service workers not supported', 'error');
+                showResult('❌ Service Workers Not Supported\n\nYour browser does not support service workers.\nTry using a modern browser like Chrome, Firefox, or Edge.');
+            }
+        }
+
+        async function checkNotificationPermission() {
+            updateStatus('Checking notification permission...', 'info');
+
+            const permission = await Notification.requestPermission();
+            console.log('Notification permission:', permission);
+
+            switch (permission) {
+                case 'granted':
+                    updateStatus('✅ Notification permission granted', 'success');
+                    showResult('✅ Notification Permission: GRANTED\n\nYou can receive notifications!\nTry sending a test notification.');
+                    break;
+                case 'denied':
+                    updateStatus('❌ Notification permission denied', 'error');
+                    showResult('❌ Notification Permission: DENIED\n\nYou have blocked notifications.\nTo enable:\n1. Click the 🔔 icon in your browser address bar\n2. Set notifications to "Allow"\n3. Refresh this page');
+                    break;
+                case 'default':
+                    updateStatus('⏳ Notification permission not set', 'warning');
+                    showResult('⏳ Notification Permission: DEFAULT\n\nYou need to grant permission to receive notifications.\nClick the "Allow" button when prompted by your browser.');
+                    break;
+                default:
+                    updateStatus('❓ Unknown permission status', 'error');
+                    showResult(`❓ Unknown Permission Status: ${permission}`);
+            }
+        }
+
+        async function testProductionURL() {
+            updateStatus('Testing production URL...', 'info');
+
+            try {
+                const response = await fetch(PRODUCTION_BASE_URL, { method: 'HEAD' });
+                console.log('Production URL test response:', response);
+
+                if (response.ok) {
+                    updateStatus('✅ Production URL is accessible', 'success');
+                    showResult(`✅ Production URL Test Passed\n\nURL: ${PRODUCTION_BASE_URL}\nStatus: ${response.status} ${response.statusText}\n\nThe production PWA is accessible and ready to receive direct notification clicks.`);
+                } else {
+                    updateStatus('⚠️ Production URL returned error', 'warning');
+                    showResult(`⚠️ Production URL Issue\n\nURL: ${PRODUCTION_BASE_URL}\nStatus: ${response.status} ${response.statusText}\n\nThe production site may have issues, but notifications should still work.`);
+                }
+            } catch (error) {
+                updateStatus('❌ Cannot reach production URL', 'error');
+                showResult(`❌ Production URL Test Failed\n\nURL: ${PRODUCTION_BASE_URL}\nError: ${error.message}\n\nThis could be a network issue or the production site is down.\nLocal testing may not work properly.`);
+            }
+        }
+
+        async function sendTestNotification(title, body, actionUrl = '/dashboard/member') {
+            const fullActionUrl = actionUrl.startsWith('http')
+                ? actionUrl
+                : `${PRODUCTION_BASE_URL}${actionUrl}`;
+
+            console.log('🧪 Sending test notification:', {
+                title,
+                body,
+                actionUrl: fullActionUrl
+            });
+
+            updateStatus('Sending test notification...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title,
+                        body,
+                        actionUrl: fullActionUrl,
+                        data: {
+                            type: 'PWA_DIRECT_TEST',
+                            actionUrl: fullActionUrl,
+                            test: 'true'
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateStatus('✅ Test notification sent successfully!', 'success');
+
+                    let resultText = `✅ Test Notification Sent!\n\nTitle: ${title}\nBody: ${body}\nAction URL: ${fullActionUrl}\n\nResults:\n`;
+                    if (data.results) {
+                        data.results.forEach((result, index) => {
+                            resultText += `${index + 1}. ${result.token.substring(0, 20)}... - ${result.status}\n`;
+                        });
+                    }
+
+                    resultText += `\n🎯 IMPORTANT:\nClick the notification to test if it opens:\n${fullActionUrl}\n\nCheck browser console for detailed logs.`;
+
+                    showResult(resultText);
+                } else {
+                    throw new Error(data.error || 'Failed to send notification');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Failed to send test notification', 'error');
+                showResult(`❌ Test Failed\n\nError: ${error.message}\n\nMake sure:\n1. You are logged in to the application\n2. You have subscribed to FCM notifications\n3. Browser notification permission is "Allowed"\n4. Service worker is registered`);
+            }
+        }
+
+        async function testSimpleNotification() {
+            await sendTestNotification(
+                '🚀 PWA Direct Access Test',
+                'Click this notification to open production PWA directly',
+                '/dashboard/member'
+            );
+        }
+
+        async function testEventNotification() {
+            await sendTestNotification(
+                '🎵 New Event Created!',
+                'Click to view the new event in production PWA',
+                '/events'
+            );
+        }
+
+        async function testPracticeReminder() {
+            await sendTestNotification(
+                '🎸 Practice Reminder',
+                'Click to view practice schedule in production PWA',
+                '/schedule/practice'
+            );
+        }
+
+        async function testCustomNotification() {
+            const title = document.getElementById('customTitle').value;
+            const body = document.getElementById('customBody').value;
+            const actionUrl = document.getElementById('customActionUrl').value;
+
+            if (!title || !body) {
+                updateStatus('Please fill in title and body', 'error');
+                return;
+            }
+
+            const fullActionUrl = actionUrl.startsWith('http')
+                ? actionUrl
+                : `${PRODUCTION_BASE_URL}${actionUrl}`;
+
+            await sendTestNotification(title, body, fullActionUrl);
+        }
+
+        function clearResults() {
+            document.getElementById('status').className = 'status info';
+            document.getElementById('status').textContent = 'Ready to test PWA direct access notifications.';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', async () => {
+            console.log('🚀 PWA Direct Access Test Page Loaded');
+            await checkServiceWorker();
+            await checkNotificationPermission();
+        });
+    </script>
+</body>
+</html>

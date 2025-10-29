@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug UKM Band Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #45a049; }
+        .btn.danger { background: #f44336; }
+        .btn.danger:hover { background: #da190b; }
+        .btn.warning { background: #ff9800; }
+        .btn.warning:hover { background: #e68900; }
+        .btn.info { background: #2196F3; }
+        .btn.info:hover { background: #1976D2; }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .tab.active {
+            border-bottom-color: #2196F3;
+            color: #2196F3;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .step.warning { border-left-color: #ffc107; }
+        .step.error { border-left-color: #dc3545; }
+        .step.success { border-left-color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 UKM Band Notification Debug Tools</h1>
+        <p>Comprehensive debugging and testing tools for UKM Band notification system</p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('system-check')">🔍 System Check</div>
+        <div class="tab" onclick="switchTab('test-notifications')">🧪 Test Notifications</div>
+        <div class="tab" onclick="switchTab('database-debug')">💾 Database Debug</div>
+        <div class="tab" onclick="switchTab('fcm-debug')">📱 FCM Debug</div>
+    </div>
+
+    <!-- System Check Tab -->
+    <div id="system-check" class="tab-content active">
+        <div class="container">
+            <h2>🔍 System Health Check</h2>
+
+            <div class="step">
+                <strong>Step 1:</strong> Check Session Status
+                <button class="btn info" onclick="checkSession()">Check Session</button>
+            </div>
+
+            <div class="step">
+                <strong>Step 2:</strong> Check Database Connection
+                <button class="btn info" onclick="checkDatabase()">Check Database</button>
+            </div>
+
+            <div class="step">
+                <strong>Step 3:</strong> Check Firebase Admin
+                <button class="btn info" onclick="checkFirebase()">Check Firebase</button>
+            </div>
+
+            <div class="step">
+                <strong>Step 4:</strong> Full System Diagnosis
+                <button class="btn" onclick="fullSystemDiagnosis()">🚀 Full Diagnosis</button>
+            </div>
+
+            <div id="system-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Test Notifications Tab -->
+    <div id="test-notifications" class="tab-content">
+        <div class="container">
+            <h2>🧪 Test All Notifications</h2>
+
+            <div class="form-group">
+                <label>Test Type:</label>
+                <select id="testType">
+                    <option value="event-creation">🎵 Event Creation (All Users)</option>
+                    <option value="practice-reminder">🎸 Practice Reminder (Team Only)</option>
+                    <option value="performance-h1">🎤 H-1 Performance (Team Only)</option>
+                    <option value="performance-2h">⏰ 2-Hour Performance (Team Only)</option>
+                    <option value="team-member">👥 Team Member Join (All Users)</option>
+                    <option value="song-addition">🎶 Song Addition (Team Only)</option>
+                    <option value="member-join-event">👥 Member Join Event (Targeted)</option>
+                </select>
+            </div>
+
+            <!-- Dynamic form based on test type -->
+            <div id="dynamicForm"></div>
+
+            <button class="btn" onclick="testNotification()">🚀 Test Notification</button>
+            <button class="btn danger" onclick="clearResults()">🗑️ Clear</button>
+
+            <div id="test-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Database Debug Tab -->
+    <div id="database-debug" class="tab-content">
+        <div class="container">
+            <h2>💾 Database Debug Tools</h2>
+
+            <div class="step">
+                <strong>Users & FCM Subscriptions:</strong>
+                <button class="btn info" onclick="debugUsersFCM()">Debug Users & FCM</button>
+            </div>
+
+            <div class="step">
+                <strong>Team Members Check:</strong>
+                <button class="btn info" onclick="debugTeamMembers()">Debug Team Members</button>
+            </div>
+
+            <div class="step">
+                <strong>Recent Notifications:</strong>
+                <button class="btn info" onclick="debugNotifications()">Debug Notifications</button>
+            </div>
+
+            <div class="step">
+                <strong>FCM Subscription Details:</strong>
+                <button class="btn warning" onclick="debugFCMSubscriptionDetails()">FCM Details</button>
+            </div>
+
+            <div id="db-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- FCM Debug Tab -->
+    <div id="fcm-debug" class="tab-content">
+        <div class="container">
+            <h2>📱 FCM Debug Tools</h2>
+
+            <div class="form-group">
+                <label>Your User ID:</label>
+                <input type="text" id="currentUserId" placeholder="Will be auto-filled">
+            </div>
+
+            <div class="step">
+                <strong>Check Your FCM Status:</strong>
+                <button class="btn info" onclick="checkMyFCMStatus()">Check My FCM</button>
+            </div>
+
+            <div class="step">
+                <strong>Subscribe to FCM:</strong>
+                <button class="btn" onclick="subscribeToFCM()">📱 Subscribe to FCM</button>
+            </div>
+
+            <div class="step">
+                <strong>Test Direct FCM:</strong>
+                <button class="btn warning" onclick="testDirectFCM()">📤 Test Direct FCM</button>
+            </div>
+
+            <div class="step">
+                <strong>Debug FCM Service Worker:</strong>
+                <button class="btn info" onclick="debugServiceWorker()">🔧 Debug Service Worker</button>
+            </div>
+
+            <div id="fcm-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'system-check';
+        let currentUserId = null;
+
+        // Tab switching
+        function switchTab(tabName) {
+            currentTab = tabName;
+
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Clear previous results
+            clearAllResults();
+        }
+
+        // Update dynamic form based on test type
+        document.getElementById('testType').addEventListener('change', updateDynamicForm);
+
+        function updateDynamicForm() {
+            const testType = document.getElementById('testType').value;
+            const formContainer = document.getElementById('dynamicForm');
+
+            let formHTML = '';
+
+            switch(testType) {
+                case 'event-creation':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Event Title:</label>
+                            <input type="text" id="eventTitle" value="Test Event - Debug Mode">
+                        </div>
+                        <div class="form-group">
+                            <label>Event Date:</label>
+                            <input type="datetime-local" id="eventDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Event Location:</label>
+                            <input type="text" id="eventLocation" value="Debug Location">
+                        </div>
+                    `;
+                    break;
+
+                case 'practice-reminder':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Practice Date:</label>
+                            <input type="datetime-local" id="practiceDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Practice Type:</label>
+                            <input type="text" id="practiceType" value="Latihan Rutin">
+                        </div>
+                    `;
+                    break;
+
+                case 'performance-h1':
+                case 'performance-2h':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Performance Title:</label>
+                            <input type="text" id="performanceTitle" value="Debug Performance">
+                        </div>
+                        <div class="form-group">
+                            <label>Performance Date & Time:</label>
+                            <input type="datetime-local" id="performanceDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Performance Location:</label>
+                            <input type="text" id="performanceLocation" value="Debug Venue">
+                        </div>
+                    `;
+                    break;
+
+                case 'team-member':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>New Member Name:</label>
+                            <input type="text" id="newMemberName" value="Debug Member">
+                        </div>
+                        <div class="form-group">
+                            <label>Role:</label>
+                            <input type="text" id="memberRole" value="Debug Role">
+                        </div>
+                    `;
+                    break;
+
+                case 'song-addition':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Song Title:</label>
+                            <input type="text" id="songTitle" value="Debug Song">
+                        </div>
+                        <div class="form-group">
+                            <label>Artist:</label>
+                            <input type="text" id="artist" value="Debug Artist">
+                        </div>
+                        <div class="form-group">
+                            <label>Added By:</label>
+                            <input type="text" id="addedBy" value="Debug Adder">
+                        </div>
+                        <div class="form-group">
+                            <label>Difficulty:</label>
+                            <select id="difficulty">
+                                <option value="Easy">Easy</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="Hard">Hard</option>
+                                <option value="Expert">Expert</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+
+                case 'member-join-event':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Event ID:</label>
+                            <input type="text" id="eventId" placeholder="Enter existing event ID">
+                        </div>
+                        <div class="form-group">
+                            <label>New Member Name:</label>
+                            <input type="text" id="newMemberName" value="Debug Member">
+                        </div>
+                        <div class="form-group">
+                            <label>Member Role:</label>
+                            <input type="text" id="memberRole" value="Debug Guitarist">
+                        </div>
+                    `;
+                    break;
+            }
+
+            formContainer.innerHTML = formHTML;
+
+            // Set default dates
+            if (testType === 'practice-reminder' || testType === 'performance-h1' || testType === 'performance-2h') {
+                const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                document.getElementById('practiceDate')?.setAttribute('value', tomorrow.toISOString().slice(0, 16));
+                document.getElementById('performanceDate')?.setAttribute('value', tomorrow.toISOString().slice(0, 16));
+            }
+        }
+
+        // Initialize form
+        updateDynamicForm();
+
+        // Clear all results
+        function clearAllResults() {
+            document.getElementById('system-result').style.display = 'none';
+            document.getElementById('test-result').style.display = 'none';
+            document.getElementById('db-result').style.display = 'none';
+            document.getElementById('fcm-result').style.display = 'none';
+        }
+
+        function clearResults() {
+            const resultId = currentTab === 'system-check' ? 'system-result' :
+                           currentTab === 'test-notifications' ? 'test-result' :
+                           currentTab === 'database-debug' ? 'db-result' : 'fcm-result';
+            document.getElementById(resultId).style.display = 'none';
+        }
+
+        // Show result
+        function showResult(resultId, content, type = 'info') {
+            const resultEl = document.getElementById(resultId);
+            resultEl.className = `result ${type}`;
+            resultEl.textContent = content;
+            resultEl.style.display = 'block';
+        }
+
+        // System Check Functions
+        async function checkSession() {
+            showResult('system-result', 'Checking session...', 'info');
+
+            try {
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
+
+                if (response.ok && data.user) {
+                    currentUserId = data.user.id;
+                    document.getElementById('currentUserId').value = currentUserId;
+                    showResult('system-result', `✅ Session Active!\nUser ID: ${data.user.id}\nName: ${data.user.name}\nEmail: ${data.user.email}\nRole: ${data.user.organizationLvl}`, 'success');
+                } else {
+                    showResult('system-result', '❌ No active session. Please login first.', 'error');
+                }
+            } catch (error) {
+                showResult('system-result', `❌ Session check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkDatabase() {
+            showResult('system-result', 'Checking database connection...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/database-check');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('system-result', `✅ Database Connected!\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('system-result', `❌ Database check failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('system-result', `❌ Database check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkFirebase() {
+            showResult('system-result', 'Checking Firebase Admin...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/firebase-status');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('system-result', `✅ Firebase Admin Ready!\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('system-result', `❌ Firebase check failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('system-result', `❌ Firebase check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function fullSystemDiagnosis() {
+            showResult('system-result', 'Running full system diagnosis...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/full-diagnosis');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('system-result', `🚀 Full Diagnosis Complete!\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('system-result', `❌ Diagnosis failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('system-result', `❌ Diagnosis failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Notification Function
+        async function testNotification() {
+            const testType = document.getElementById('testType').value;
+            const resultId = 'test-result';
+
+            showResult(resultId, `Testing ${testType} notification...`, 'info');
+
+            try {
+                // Collect form data
+                const formData = collectFormData(testType);
+
+                const response = await fetch(`/api/notifications/ukmband/${testType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(resultId, `✅ ${testType} notification sent successfully!\n\n${JSON.stringify(data, null, 2)}`, 'success');
+
+                    // Check notifications after 2 seconds
+                    setTimeout(() => checkNotifications(), 2000);
+                } else {
+                    showResult(resultId, `❌ Failed to send ${testType} notification:\n\n${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultId, `❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function collectFormData(testType) {
+            const formData = {};
+
+            switch (testType) {
+                case 'event-creation':
+                    formData.eventTitle = document.getElementById('eventTitle').value;
+                    formData.eventDate = document.getElementById('eventDate').value;
+                    formData.eventLocation = document.getElementById('eventLocation').value;
+                    formData.sendToAllMembers = true;
+                    break;
+
+                case 'practice-reminder':
+                    formData.practiceDate = document.getElementById('practiceDate').value;
+                    formData.practiceType = document.getElementById('practiceType').value;
+                    break;
+
+                case 'performance-h1':
+                    formData.reminderType = 'H1';
+                    formData.performanceTitle = document.getElementById('performanceTitle').value;
+                    formData.performanceDate = document.getElementById('performanceDate').value;
+                    formData.performanceLocation = document.getElementById('performanceLocation').value;
+                    break;
+
+                case 'performance-2h':
+                    formData.reminderType = '2_HOURS';
+                    formData.performanceTitle = document.getElementById('performanceTitle').value;
+                    formData.performanceTime = document.getElementById('performanceDate').value;
+                    formData.performanceLocation = document.getElementById('performanceLocation').value;
+                    break;
+
+                case 'team-member':
+                    formData.newMemberName = document.getElementById('newMemberName').value;
+                    formData.role = document.getElementById('memberRole').value;
+                    break;
+
+                case 'song-addition':
+                    formData.songTitle = document.getElementById('songTitle').value;
+                    formData.artist = document.getElementById('artist').value;
+                    formData.addedBy = document.getElementById('addedBy').value;
+                    formData.difficulty = document.getElementById('difficulty').value;
+                    break;
+
+                case 'member-join-event':
+                    formData.eventId = document.getElementById('eventId').value;
+                    formData.newMemberName = document.getElementById('newMemberName').value;
+                    formData.memberRole = document.getElementById('memberRole').value;
+                    formData.sendToExistingMembersOnly = true;
+                    break;
+            }
+
+            return formData;
+        }
+
+        // Database Debug Functions
+        async function debugUsersFCM() {
+            showResult('db-result', 'Debugging users and FCM subscriptions...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/users-fcm');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('db-result', `Users & FCM Debug:\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('db-result', `Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('db-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function debugTeamMembers() {
+            showResult('db-result', 'Debugging team members...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/team-members');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('db-result', `Team Members Debug:\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('db-result', `Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('db-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function debugNotifications() {
+            showResult('db-result', 'Debugging notifications...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications?limit=20');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('db-result', `Recent Notifications:\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('db-result', `Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('db-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function debugFCMSubscriptionDetails() {
+            showResult('db-result', 'Debugging FCM subscription details...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/fcm-subscription-detail');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('db-result', `FCM Subscription Details:\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('db-result', `Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('db-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkNotifications() {
+            try {
+                const response = await fetch('/api/notifications?limit=10');
+                const data = await response.json();
+
+                if (response.ok && data.notifications) {
+                    console.log('📊 Recent notifications:', data.notifications);
+
+                    const recentNotifications = data.notifications.slice(0, 3).map(n =>
+                        `- ${n.title} (${n.type})\n  ${n.message}\n  Created: ${new Date(n.createdAt).toLocaleString()}`
+                    ).join('\n\n');
+
+                    console.log('📊 Recent Notifications in Console:', recentNotifications);
+                }
+            } catch (error) {
+                console.error('Error checking notifications:', error);
+            }
+        }
+
+        // FCM Debug Functions
+        async function checkMyFCMStatus() {
+            showResult('fcm-result', 'Checking your FCM status...', 'info');
+
+            try {
+                const response = await fetch('/api/debug/my-fcm-status');
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('fcm-result', `Your FCM Status:\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('fcm-result', `Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('fcm-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function subscribeToFCM() {
+            showResult('fcm-result', 'Subscribing to FCM...', 'info');
+
+            try {
+                // Get FCM token from service worker
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: 'BLn1y_6p0G8cDl8I8rJq7h6t4H5x8fI4J3kQwL9m8Xn5vY2z'
+                });
+
+                const token = subscription.endpoint.split('/').pop();
+
+                const response = await fetch('/api/fcm/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: token,
+                        deviceInfo: {
+                            userAgent: navigator.userAgent,
+                            platform: navigator.platform,
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('fcm-result', `✅ FCM Subscription Successful!\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('fcm-result', `❌ FCM Subscription Failed:\n\n${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult('fcm-result', `❌ FCM Subscription Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDirectFCM() {
+            showResult('fcm-result', 'Testing direct FCM...', 'info');
+
+            try {
+                const response = await fetch('/api/notifications/test-fcm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: '🔧 Direct FCM Test',
+                        message: 'This is a test notification from debug tool',
+                        token: 'test-token'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('fcm-result', `✅ Direct FCM Test Successful!\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('fcm-result', `❌ Direct FCM Test Failed:\n\n${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult('fcm-result', `❌ Direct FCM Test Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function debugServiceWorker() {
+            showResult('fcm-result', 'Debugging service worker...', 'info');
+
+            // Check if service worker is registered
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        showResult('fcm-result', `Service Worker Status:\n\n- Registered SWs: ${registrations.length}\n- SW Script URL: ${registrations[0].active?.scriptURL || 'N/A'}\n- SW State: ${registrations[0].active?.state || 'N/A'}\n\n📱 Browser Console will show detailed FCM logs when notifications arrive!`, 'success');
+
+                        console.log('🔧 Service Worker Debug Info:', registrations);
+                    } else {
+                        showResult('fcm-result', '❌ No service worker registered', 'error');
+                    }
+                });
+            } else {
+                showResult('fcm-result', '❌ Service Worker not supported in this browser', 'error');
+            }
+
+            // Test notification permission
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log('✅ Notification permission granted');
+                    } else {
+                        console.log('❌ Notification permission denied');
+                    }
+                });
+            }
+        }
+
+        // Auto-check session on load
+        window.addEventListener('load', () => {
+            checkSession();
+        });
+    </script>
+</body>
+</html>

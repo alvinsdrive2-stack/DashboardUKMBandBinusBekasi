@@ -156,57 +156,16 @@ export async function POST(request: NextRequest) {
       data: personnelSlots
     });
 
-    // Send notifications to all members about new event (BOTH old and new system)
+    // Send notifications to all members about new event (UKM Band Notification System)
     try {
-      // OLD SYSTEM: Get all members (non-manager users) - TETEP DIPAKE!
-      const members = await prisma.user.findMany({
-        where: {
-          organizationLvl: {
-            in: ['TALENT', 'SPECTA']
-          }
-        },
-        select: {
-          id: true
-        }
-      });
+      console.log(`🎵 Sending UKM Band notifications for new event: ${title}`);
 
-      // Create notifications for all members - TETEP DIPAKE!
-      const notificationData = {
-        title: 'Acara Baru Tersedia!',
-        message: `Acara baru "${title}" telah dibuat. Segera daftar untuk ikut serta!`,
-        type: 'EVENT_STATUS_CHANGED',
-        eventId: event.id,
-        actionUrl: '/dashboard/member/available-events'
-      };
-
-      // Create notifications directly using Prisma - TETEP DIPAKE!
-      await prisma.notification.createMany({
-        data: members.map(member => ({
-          userId: member.id,
-          ...notificationData,
-          isRead: false
-        }))
-      });
-
-      // Send real-time notifications - TETEP DIPAKE!
-      emitNotificationToMultipleUsers(
-        members.map(m => m.id),
-        {
-          id: `temp-${Date.now()}`, // Temporary ID
-          ...notificationData,
-          isRead: false,
-          createdAt: new Date().toISOString()
-        }
-      );
-
-      console.log(`OLD notifications sent to ${members.length} members for new event: ${title}`);
-
-      // NEW SYSTEM: FCM notifications
+      // NEW SYSTEM: FCM notifications + Database notifications
       await AutoNotificationService.notifyNewEvent(event.id);
-      console.log(`NEW FCM notifications sent for new event: ${title}`);
+      console.log(`✅ UKM Band notifications sent successfully for new event: ${title}`);
 
     } catch (notificationError) {
-      console.error('Failed to send notifications for new event:', notificationError);
+      console.error('❌ Failed to send UKM Band notifications for new event:', notificationError);
       // Don't fail the request if notifications fail
     }
 

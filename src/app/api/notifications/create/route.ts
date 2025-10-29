@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`🔍 [API-Create] Creating notification via API:`);
+    console.log(`   - User ID: ${userId}`);
+    console.log(`   - Title: ${title}`);
+    console.log(`   - Type: ${type}`);
+    console.log(`   - Event ID: ${eventId}`);
+    console.log(`   - Action URL: ${actionUrl}`);
+
     const notification = await notificationTriggerService.createNotification({
       userId,
       title,
@@ -49,6 +56,9 @@ export async function POST(request: NextRequest) {
       eventId,
       actionUrl
     });
+
+    console.log(`✅ [API-Create] Notification created, ID: ${notification.id}`);
+    console.log(`🔍 [API-Create] Checking if this triggers additional notifications...`);
 
     return NextResponse.json({ notification }, { status: 201 });
   } catch (error) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,35 +12,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual unsubscribe logic in your database
-    // For now, just log the unsubscribe request
-    console.log(`🔕 FCM Unsubscribe Request:`);
-    console.log(`- User ID: ${userId}`);
-    console.log(`- FCM Token: ${fcmToken.substring(0, 30)}...`);
-    console.log(`- Timestamp: ${new Date().toISOString()}`);
+    console.log(`📱 Unsubscribing user ${userId} from FCM notifications`);
 
-    // Example database operation (uncomment and adapt for your database):
-    // await prisma.fcmToken.deleteMany({
-    //   where: {
-    //     userId: userId,
-    //     token: fcmToken
-    //   }
-    // });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Successfully unsubscribed from FCM notifications',
-      timestamp: new Date().toISOString()
+    // Find and deactivate the subscription
+    const subscription = await prisma.fCMSubscription.findFirst({
+      where: {
+        userId,
+        token: fcmToken,
+        isActive: true
+      }
     });
 
-  } catch (error) {
-    console.error('❌ FCM unsubscribe error:', error);
+    if (subscription) {
+      await prisma.fCMSubscription.update({
+        where: { id: subscription.id },
+        data: {
+          isActive: false,
+          updatedAt: new Date()
+        }
+      });
 
+      console.log('✅ FCM subscription deactivated');
+      return NextResponse.json({
+        success: true,
+        message: 'FCM subscription deactivated successfully'
+      });
+    } else {
+      console.log('⚠️ No active FCM subscription found');
+      return NextResponse.json({
+        success: true,
+        message: 'No active subscription found'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ FCM unsubscription failed:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to unsubscribe from FCM notifications',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to unsubscribe from FCM notifications' },
       { status: 500 }
     );
   }

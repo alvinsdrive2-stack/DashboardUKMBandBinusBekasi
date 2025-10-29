@@ -52,15 +52,20 @@ export const useFallbackNotifications = (): UseFallbackNotificationsReturn => {
         // Show browser notification for new notifications
         const unreadNotifs = newNotifications.filter((n: FallbackNotification) => !n.isRead);
         if (unreadNotifs.length > 0) {
-          // Show browser notification
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('UKM Band Bekasi', {
-              body: unreadNotifs[0].message,
-              icon: '/icons/favicon.png',
-              badge: '/icons/favicon.png',
-              tag: unreadNotifs[0].id,
-            });
-          }
+          // 🔥 DISABLED - Preventing duplicate client-side notifications
+          // All notifications should be handled by Firebase service worker only
+          console.log('🚫 Fallback browser notification DISABLED to prevent duplicates');
+          console.log(`🚫 Would have created: UKM Band Bekasi - ${unreadNotifs[0].message}`);
+
+          // ORIGINAL CODE DISABLED:
+          // if ('Notification' in window && Notification.permission === 'granted') {
+          //   new Notification('UKM Band Bekasi', {
+          //     body: unreadNotifs[0].message,
+          //     icon: '/icons/favicon.png',
+          //     badge: '/icons/favicon.png',
+          //     tag: unreadNotifs[0].id,
+          //   });
+          // }
         }
       }
 

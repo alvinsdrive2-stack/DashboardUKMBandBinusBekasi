@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Box, Spinner, Text, Image } from '@chakra-ui/react';
 import Footer from '@/components/Footer';
+import { notificationDebugger } from '@/lib/notificationDebugger';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -13,30 +14,59 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
+
+    // Initialize notification debugger
+    if (typeof window !== 'undefined') {
+      notificationDebugger.trackNotifications();
+      console.log('🕵️ Notification Debugger initialized - tracking all notifications');
+    }
   }, []);
 useEffect(() => {
   if (!isClient) return;
 
-  // 🔔 Daftarkan Service Worker untuk background push
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/firebase-messaging-sw.js")
-      .then(() => console.log("✅ Service Worker registered"))
-      .catch((err) => console.error("❌ SW registration failed:", err));
-  }
+  // 🔔 Service Worker registration handled by firebase.ts to prevent duplicates
+  // Firebase service worker will be registered automatically when needed
 
-  // 🔥 Ambil FCM token dari browser (dynamic import)
-  import("@/firebase/client").then(({ requestForToken }) => {
-    requestForToken()
-      .then((token) => {
-        if (token) {
-          console.log("FCM Token:", token);
-          // bisa kirim token ke server-mu di sini
-        }
-      })
-      .catch((err) => console.error("Error getting FCM token:", err));
-  }).catch((err) => console.error("Error importing Firebase client:", err));
-}, [isClient]);
+  // 🔥 Ambil FCM token dari browser (dynamic import) - hanya jika user sudah login
+  if (status === 'authenticated' && session?.user?.id) {
+    import("@/firebase/client").then(({ requestForToken }) => {
+      requestForToken()
+        .then(async (token) => {
+          if (token) {
+            console.log("🔥 FCM Token obtained:", token);
+
+            // Simpan FCM token ke server
+            try {
+              const response = await fetch('/api/fcm/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: session.user.id,
+                  fcmToken: token,
+                  deviceInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    timestamp: new Date().toISOString()
+                  }
+                })
+              });
+
+              if (response.ok) {
+                console.log("✅ FCM token saved to server");
+              } else {
+                console.error("❌ Failed to save FCM token:", await response.text());
+              }
+            } catch (error) {
+              console.error("❌ Error saving FCM token:", error);
+            }
+          } else {
+            console.log("⚠️ No FCM token obtained (permission denied or not supported)");
+          }
+        })
+        .catch((err) => console.error("❌ Error getting FCM token:", err));
+    }).catch((err) => console.error("❌ Error importing Firebase client:", err));
+  }
+}, [isClient, status, session?.user?.id]);
   useEffect(() => {
     if (!isClient || status === 'loading') return;
 

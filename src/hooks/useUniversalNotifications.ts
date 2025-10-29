@@ -91,27 +91,34 @@ export function useUniversalNotifications() {
     }
 
     try {
-      const notification = new Notification(title, {
-        body,
-        icon: '/icons/favicon.png',
-        badge: '/icons/favicon.png',
-        tag: `universal-${Date.now()}`,
-        requireInteraction: false,
-        silent: false,
-        vibration: [200, 100, 200],
-        timestamp: Date.now(),
-        ...options
-      });
-
-      addLog(`✅ Local notification sent: ${title}`);
-
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        notification.close();
-        addLog(`🔕 Local notification closed: ${title}`);
-      }, 5000);
-
+      // 🔥 DISABLED - Preventing duplicate client-side notifications
+      // All notifications should be handled by Firebase service worker only
+      addLog('🚫 Local notification DISABLED to prevent duplicates');
+      addLog(`🚫 Would have created: ${title} - ${body}`);
       return true;
+
+      // ORIGINAL CODE DISABLED:
+      // const notification = new Notification(title, {
+      //   body,
+      //   icon: '/icons/favicon.png',
+      //   badge: '/icons/favicon.png',
+      //   tag: `universal-${Date.now()}`,
+      //   requireInteraction: false,
+      //   silent: false,
+      //   vibration: [200, 100, 200],
+      //   timestamp: Date.now(),
+      //   ...options
+      // });
+
+      // addLog(`✅ Local notification sent: ${title}`);
+
+      // // Auto-close after 5 seconds
+      // setTimeout(() => {
+      //   notification.close();
+      //   addLog(`🔕 Local notification closed: ${title}`);
+      // }, 5000);
+
+      // return true;
     } catch (error) {
       addLog(`❌ Local notification failed: ${error.message}`);
       return false;
